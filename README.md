@@ -24,6 +24,7 @@ Supports panel data with multiple responses per respondent.
 
 
 ## Usage
+```r
 library(FactorialSurvey)
 
 # Example dataset
@@ -42,7 +43,7 @@ print(logit_model)
 
 # Compute MWTP for x1 relative to price
 fs_mwtp(logit_model, attribute = "x1", price = "price")
-
+```
 
 ## Development
 This package is under active development. Contributions and feedback are welcome!
