@@ -13,9 +13,10 @@ install.packages("remotes")
 
 # Install FactorialSurvey from GitHub
 remotes::install_github("tanakak/FactorialSurvey")
-
+```
 
 ## Features
+
 fs_logit(): Standard logit model estimation with clustered standard errors.
 fs_rplogit(): Random parameter logit model estimation (supports normal and log-normal distributions).
 fs_mwtp(): Computes MWTP using estimated parameters.
