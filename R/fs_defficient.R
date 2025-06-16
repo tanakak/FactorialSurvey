@@ -1,62 +1,63 @@
-#' Efficient Experimental Design Generator for Factorial Survey
+#' Generate a D-efficient fractional factorial design and assign to groups
 #'
-#' Generates a D-efficient fractional factorial design based on given attribute levels.
-#' Allows group assignment with approximately balanced attribute-level combinations.
+#' @param levels A numeric vector indicating the number of levels for each attribute.
+#' @param n_designs Integer. The number of profiles to select (e.g., 18).
+#' @param n_groups Integer. The number of groups to split the design into.
+#' @param var_names A character vector of names for the variables (same length as levels).
+#' @param seed Integer. Seed for reproducibility (default: NULL).
+#' @param check_balance Logical. If TRUE, prints the distribution of attribute levels by group.
 #'
-#' @param levels Integer vector specifying the number of levels for each attribute.
-#' @param n_designs Number of designs (vignettes) to be generated.
-#' @param n_groups Number of groups to divide the vignettes into (optional).
-#' @param var_names Optional character vector specifying names for the attributes.
-#' @param seed Optional seed for reproducibility.
-#' @param check_balance Logical, if TRUE, print cross-tabulation of level distribution by group.
-#'
-#' @return A data.frame of D-efficient design with optional group assignment.
+#' @return A data.frame containing the selected design with a "group" column.
 #' @export
-fs_defficient <- function(levels, n_designs = 18, n_groups = NULL,
-                          var_names = NULL, seed = NULL, check_balance = FALSE) {
-  if (!requireNamespace("AlgDesign", quietly = TRUE)) {
-    stop("Please install the 'AlgDesign' package first: install.packages('AlgDesign')")
+#'
+#' @examples
+#' fs_defficient(levels = c(3, 2, 2), n_designs = 12, n_groups = 3,
+#'               var_names = c("危険度", "時間", "避難行動"), seed = 123)
+fs_defficient <- function(levels,
+                          n_designs,
+                          n_groups,
+                          var_names = NULL,
+                          seed = NULL,
+                          check_balance = FALSE) {
+
+  if (!is.null(seed)) {
+    set.seed(seed)
   }
 
-  if (!is.numeric(levels) || any(levels < 2)) {
-    stop("All elements in 'levels' must be integers >= 2.")
+  # Generate full factorial design
+  level_lists <- lapply(levels, function(l) seq_len(l))
+  full_design <- expand.grid(level_lists)
+  colnames(full_design) <- if (!is.null(var_names)) var_names else paste0("X", seq_along(levels))
+
+  # Check if requested number of designs exceeds possible combinations
+  if (n_designs > nrow(full_design)) {
+    stop("n_designs must not be greater than the number of possible combinations.")
   }
 
-  if (!is.null(var_names) && length(var_names) != length(levels)) {
-    stop("Length of 'var_names' must match the length of 'levels'.")
-  }
+  # Use D-efficient design selection
+  result <- AlgDesign::optFederov(data = full_design,
+                                  nTrials = n_designs,
+                                  criterion = "D",
+                                  approximate = FALSE)
 
-  if (!is.null(n_groups) && (n_designs %% n_groups != 0)) {
-    warning("'n_designs' is not divisible by 'n_groups'. Groups will be approximately equal.")
-  }
+  design <- result$design
+  d_efficiency <- result$D
 
-  if (!is.null(seed)) set.seed(seed)
+  # Assign groups evenly
+  design$group <- rep(1:n_groups, length.out = n_designs)
 
-  if (is.null(var_names)) {
-    var_names <- paste0("x", seq_along(levels))
-  }
-
-  level_list <- lapply(levels, function(l) factor(seq_len(l)))
-  names(level_list) <- var_names
-  full_design <- expand.grid(level_list)
-
-  design <- AlgDesign::optFederov(
-    data = full_design,
-    nTrials = n_designs,
-    criterion = "D"
-  )$design
-
-  if (!is.null(n_groups)) {
-    design$group <- rep(1:n_groups, length.out = nrow(design))
-
-    if (check_balance) {
-      message("=== Group Balance Check ===")
-      for (v in var_names) {
-        print(table(design[[v]], design$group))
-      }
+  # Optional: check attribute balance across groups
+  if (check_balance) {
+    cat("=== Group Balance Check ===\n")
+    for (col in seq_len(ncol(design) - 1)) {
+      tab <- table(design[[col]], design$group)
+      print(tab)
+      cat("\n")
     }
   }
 
-  rownames(design) <- NULL
+  # Add D-efficiency as attribute
+  attr(design, "D_efficiency") <- round(d_efficiency, 6)
+
   return(design)
 }
