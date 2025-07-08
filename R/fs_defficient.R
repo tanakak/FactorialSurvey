@@ -1,63 +1,78 @@
-#' Generate a D-efficient fractional factorial design and assign to groups
+# install.packages("AlgDesign") # 未インストールの場合は実行
+library(AlgDesign)
+
+#' @title D効率計画による要因サーベイの組み合わせ生成
 #'
-#' @param levels A numeric vector indicating the number of levels for each attribute.
-#' @param n_designs Integer. The number of profiles to select (e.g., 18).
-#' @param n_groups Integer. The number of groups to split the design into.
-#' @param var_names A character vector of names for the variables (same length as levels).
-#' @param seed Integer. Seed for reproducibility (default: NULL).
-#' @param check_balance Logical. If TRUE, prints the distribution of attribute levels by group.
+#' @description 要因サーベイ実験の要因と水準から、D効率基準に基づいて
+#'   最適なプロファイル（ビネット）の組み合わせを生成します。
 #'
-#' @return A data.frame containing the selected design with a "group" column.
-#' @export
+#' @param factors 要因と水準を定義したリスト。リストの各要素名が要因名、
+#'   その中身のベクトルが水準名になります。
+#' @param n_vignettes 生成したい合計プロファイル（ビネット）数。
+#' @param n_blocks 作成するブロック（回答者に見せるセット）の数。
+#'   `n_vignettes`は`n_blocks`で割り切れる必要があります。
+#'
+#' @return D効率的に選択されたプロファイルと、それらがどのブロックに
+#'   属するかを示す`block`列を含むデータフレーム。
 #'
 #' @examples
-#' fs_defficient(levels = c(3, 2, 2), n_designs = 12, n_groups = 3,
-#'               var_names = c("危険度", "時間", "避難行動"), seed = 123)
-fs_defficient <- function(levels,
-                          n_designs,
-                          n_groups,
-                          var_names = NULL,
-                          seed = NULL,
-                          check_balance = FALSE) {
-
-  if (!is.null(seed)) {
-    set.seed(seed)
-  }
-
-  # Generate full factorial design
-  level_lists <- lapply(levels, function(l) seq_len(l))
-  full_design <- expand.grid(level_lists)
-  colnames(full_design) <- if (!is.null(var_names)) var_names else paste0("X", seq_along(levels))
-
-  # Check if requested number of designs exceeds possible combinations
-  if (n_designs > nrow(full_design)) {
-    stop("n_designs must not be greater than the number of possible combinations.")
-  }
-
-  # Use D-efficient design selection
-  result <- AlgDesign::optFederov(data = full_design,
-                                  nTrials = n_designs,
-                                  criterion = "D",
-                                  approximate = FALSE)
-
-  design <- result$design
-  d_efficiency <- result$D
-
-  # Assign groups evenly
-  design$group <- rep(1:n_groups, length.out = n_designs)
-
-  # Optional: check attribute balance across groups
-  if (check_balance) {
-    cat("=== Group Balance Check ===\n")
-    for (col in seq_len(ncol(design) - 1)) {
-      tab <- table(design[[col]], design$group)
-      print(tab)
-      cat("\n")
-    }
-  }
-
-  # Add D-efficiency as attribute
-  attr(design, "D_efficiency") <- round(d_efficiency, 6)
-
-  return(design)
+#' # --- 1. 要因と水準の定義 ---
+#' factor_list <- list(
+#'   school_reputation = c("有名", "無名"),
+#'   teacher_support = c("手厚い", "普通", "最低限"),
+#'   tuition_fee = c("高い", "普通", "安い"),
+#'   remote_learning = c("あり", "なし")
+#' )
+#'
+#' # --- 2. 関数の実行 ---
+#' # 合計36個のプロファイルを、12個のブロック（セット）に分ける
+#' # (1ブロックあたり 36/12 = 3個のプロファイル)
+#' survey_design <- create_fse_design(
+#'   factors = factor_list,
+#'   n_vignettes = 36,
+#'   n_blocks = 12
+#' )
+#'
+#' # --- 3. 結果の確認 ---
+#' print(head(survey_design, 10))
+#' table(survey_design$block) # 各ブロックのプロファイル数を確認
+#'
+create_fse_design <- function(factors, n_vignettes, n_blocks = 1) {
+  
+  # --- Step 1: 全組み合わせ（完全実施計画）の生成 ---
+  full_factorial <- expand.grid(factors, KEEP.OUT.ATTRS = FALSE)
+  cat(paste("全組み合わせの数:", nrow(full_factorial)), "\n")
+  
+  # --- Step 2: D効率計画によるプロファイルの抽出 ---
+  # optFederov関数で、統計的に最も効率の良い組み合わせをn_vignettes個選ぶ
+  # nRepeatsを増やすと、より良いデザインが見つかる可能性が高まる
+  cat(paste(n_vignettes, "個のプロファイルをD効率基準で抽出中..."), "\n")
+  
+  efficient_design <- AlgDesign::optFederov(
+    frml = ~., # 全ての主効果を考慮
+    data = full_factorial,
+    nTrials = n_vignettes,
+    criterion = "D", # D効率基準
+    nRepeats = 50
+  )
+  
+  # --- Step 3: 抽出されたプロファイルをブロックに分割 ---
+  # 回答者ごとに異なるセットを見せるため、プロファイルを均等なブロックに分ける
+  # optBlock関数が、ブロックによる影響を最小化するように割り当ててくれる
+  cat(paste(n_blocks, "個のブロックに分割中..."), "\n")
+  
+  blocked_design <- AlgDesign::optBlock(
+    frml = ~.,
+    withinData = efficient_design$design,
+    blocksizes = rep(n_vignettes / n_blocks, n_blocks),
+    nRepeats = 50
+  )
+  
+  cat("処理が完了しました。\n\n")
+  
+  # 結果を一つのデータフレームにまとめる
+  final_design <- blocked_design$designs[[1]]
+  final_design$block <- blocked_design$blocks
+  
+  return(final_design)
 }
