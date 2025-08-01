@@ -45,5 +45,6 @@ selected profiles and a block column.
 }
 \description{
 Generates an optimal set of profiles (vignettes) for a factorial
-survey experiment based on the D-efficiency criterion.
+survey experiment based on the D-efficiency criterion. This function
+handles the extraction, blocking, and shuffling of vignettes.
 }

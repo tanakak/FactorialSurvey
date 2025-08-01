@@ -1,6 +1,7 @@
 #' @title Generate D-Efficient Designs for Factorial Surveys
 #' @description Generates an optimal set of profiles (vignettes) for a factorial
-#'   survey experiment based on the D-efficiency criterion.
+#'   survey experiment based on the D-efficiency criterion. This function
+#'   handles the extraction, blocking, and shuffling of vignettes.
 #'
 #' @param factors A list defining the factors and their levels.
 #' @param n_vignettes The total number of profiles (vignettes) to generate.
@@ -59,46 +60,44 @@ fs_defficient <- function(
     message("Extracting ", n_vignettes, " profiles based on D-efficiency criterion...")
   }
 
-  efficient_design <- AlgDesign::optFederov(
+  efficient_result <- AlgDesign::optFederov(
     frml = ~.,
     data = full_factorial,
     nTrials = n_vignettes,
     criterion = "D",
     nRepeats = n_repeats
   )
+  design <- as.data.frame(efficient_result$design)
 
   if (verbose) {
-    message("D-efficiency: ", round(efficient_design$D, 4))
+    message("D-efficiency: ", round(efficient_result$D, 4))
   }
 
-  # --- Blocking ---
+  # --- Manual Blocking (Robust Method) ---
   if (n_blocks > 1) {
     if (verbose) {
       message("Dividing into ", n_blocks, " blocks...")
     }
-    blocked <- AlgDesign::optBlock(
-      frml = ~.,
-      withinData = efficient_design$design,
-      blocksizes = rep(n_vignettes / n_blocks, n_blocks),
-      nRepeats = n_repeats
-    )
-    # 修正点: as.data.frame()で確実にデータフレームに変換
-    design <- as.data.frame(blocked$designs[[1]])
-    design$block <- blocked$blocks
+    # Randomly shuffle the rows before assigning blocks
+    shuffled_rows <- design[sample(nrow(design)), ]
+    
+    # Assign block numbers
+    vignettes_per_block <- n_vignettes / n_blocks
+    shuffled_rows$block <- rep(1:n_blocks, each = vignettes_per_block)
+    design <- shuffled_rows
   } else {
-    design <- as.data.frame(efficient_design$design)
     design$block <- 1
   }
 
   # --- Shuffle within blocks (to avoid order effects) ---
   if (shuffle_within_blocks) {
-    # 修正点: Base Rの標準機能を使った安定的なシャッフル処理
+    # Use a stable Base R method for shuffling within groups
     design_list <- split(design, design$block)
     shuffled_list <- lapply(design_list, function(sub_df) {
       sub_df[sample(nrow(sub_df)), , drop = FALSE]
     })
     design <- do.call(rbind, shuffled_list)
-    rownames(design) <- NULL # 行名をリセット
+    rownames(design) <- NULL # Reset row names for consistency
   }
 
   # --- Assign attributes ---
