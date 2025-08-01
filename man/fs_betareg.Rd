@@ -33,6 +33,9 @@ option to automatically transform the response variable to the (0, 1) interval.
 }
 \examples{
 \dontrun{
+  # Ensure required packages are installed
+  # install.packages(c("betareg", "margins"))
+
   set.seed(123)
   n <- 100
   vignette_data <- data.frame(

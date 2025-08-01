@@ -3,6 +3,8 @@
 #' factorial survey data, often on a 0-10 point scale. It includes an
 #' option to automatically transform the response variable to the (0, 1) interval.
 #'
+#' @importFrom stats AIC BIC logLik
+#'
 #' @param formula A symbolic description of the model to be fitted.
 #' @param data A data frame containing the variables in the model.
 #' @param transform A logical value. If TRUE (default), the function assumes the
@@ -17,9 +19,11 @@
 #' @return A list containing the fitted model object (`model`) and the computed
 #'   marginal effects (`marginal_effects`), if requested.
 #'
-#' @importFrom stats AIC BIC logLik pmin pmax
 #' @examples
 #' \dontrun{
+#'   # Ensure required packages are installed
+#'   # install.packages(c("betareg", "margins"))
+#'
 #'   set.seed(123)
 #'   n <- 100
 #'   vignette_data <- data.frame(
@@ -36,40 +40,39 @@
 fs_betareg <- function(
     formula,
     data,
-    transform = TRUE,  # 0-10スコア変換の有無を選択
+    transform = TRUE,
     compute_me = TRUE,
     verbose = TRUE
 ) {
-  # 必要なパッケージがなければエラーを出す
+  # Check for required packages
   if (!requireNamespace("betareg", quietly = TRUE)) {
     stop("Package 'betareg' is required. Please install it using: install.packages('betareg')")
   }
 
-  # formulaから従属変数の名前を取得
+  # Get the name of the dependent variable from the formula
   y_var <- all.vars(formula)[1]
 
   # --- Transformation Block ---
-  # transform = TRUE の場合、0-10スコアを(0,1)に変換
+  # If transform = TRUE, convert the 0-10 score to the (0, 1) interval
   if (transform) {
     y <- data[[y_var]]
 
-    # Step 1: 0-10点のスケールを0-1のスケールに正規化
-    # 注意: 元のスケールが0-10でない場合は、この除数を変更してください
+    # Step 1: Normalize the 0-10 scale to a 0-1 scale
     y_scaled <- y / 10.0
 
-    # Step 2: 0と1の値を回避するための変換 (Smithson & Verkuilen, 2006)
+    # Step 2: Transformation to avoid 0 and 1 values (Smithson & Verkuilen, 2006)
     N <- length(y_scaled)
     y_beta <- (y_scaled * (N - 1) + 0.5) / N
 
-    # 安全ガード: 変換後の値が厳密に0や1になることを防ぐ
+    # Safeguard: Prevent transformed values from being exactly 0 or 1
     y_beta <- pmin(pmax(y_beta, .Machine$double.eps), 1 - .Machine$double.eps)
 
-    # 変換した値で元のデータフレームの列を上書き
+    # Overwrite the column in the original data frame with the transformed values
     data[[y_var]] <- y_beta
   }
 
   # --- Model Estimation ---
-  # ベータ回帰モデルを推定
+  # Fit the beta regression model
   model <- tryCatch({
     betareg::betareg(formula, data = data)
   }, error = function(e) {
@@ -78,7 +81,7 @@ fs_betareg <- function(
 
 
   # --- Verbose Output ---
-  # verbose = TRUE の場合、結果をコンソールに出力
+  # If verbose = TRUE, print the results to the console
   if (verbose) {
     cat("===== Beta Regression Model Summary =====\n")
     print(summary(model))
@@ -91,7 +94,7 @@ fs_betareg <- function(
   }
 
   # --- Marginal Effects ---
-  # compute_me = TRUE の場合、限界効果を計算
+  # If compute_me = TRUE, compute marginal effects
   me <- NULL
   if (compute_me) {
     if (!requireNamespace("margins", quietly = TRUE)) {
@@ -112,7 +115,7 @@ fs_betareg <- function(
   }
 
   # --- Return Value ---
-  # 結果をリストとして返す
+  # Return the results as a list
   invisible(list(
     model = model,
     marginal_effects = me
