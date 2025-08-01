@@ -82,17 +82,23 @@ fs_defficient <- function(
       blocksizes = rep(n_vignettes / n_blocks, n_blocks),
       nRepeats = n_repeats
     )
-    design <- blocked$designs[[1]]
+    # 修正点: as.data.frame()で確実にデータフレームに変換
+    design <- as.data.frame(blocked$designs[[1]])
     design$block <- blocked$blocks
   } else {
-    design <- efficient_design$design
+    design <- as.data.frame(efficient_design$design)
     design$block <- 1
   }
 
   # --- Shuffle within blocks (to avoid order effects) ---
   if (shuffle_within_blocks) {
-    design_list <- split(as.data.frame(design), design$block)
-    design <- do.call(rbind, lapply(design_list, function(df) df[sample(nrow(df)), ]))
+    # 修正点: Base Rの標準機能を使った安定的なシャッフル処理
+    design_list <- split(design, design$block)
+    shuffled_list <- lapply(design_list, function(sub_df) {
+      sub_df[sample(nrow(sub_df)), , drop = FALSE]
+    })
+    design <- do.call(rbind, shuffled_list)
+    rownames(design) <- NULL # 行名をリセット
   }
 
   # --- Assign attributes ---
