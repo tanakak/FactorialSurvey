@@ -34,7 +34,9 @@ fs_betareg <- function(
   }
 
   # --- Data Preparation ---
+  # Create a copy to avoid modifying the original data frame (eliminates side effects)
   data_internal <- data
+
   y_var <- all.vars(formula)[1]
   y <- data_internal[[y_var]]
 
@@ -42,6 +44,7 @@ fs_betareg <- function(
   if (any(is.na(y))) stop("The dependent variable contains missing values.")
 
   # --- Transformation ---
+  # Transform the response if needed, operating on the internal data copy
   if (transform) {
     y_scaled <- y / 10
     N <- length(y_scaled)
@@ -51,6 +54,7 @@ fs_betareg <- function(
   }
 
   # --- Model Estimation ---
+  # Use the internal (potentially transformed) data for model fitting
   model <- tryCatch({
     betareg::betareg(formula, data = data_internal)
   }, error = function(e) {
@@ -88,37 +92,30 @@ fs_betareg <- function(
 
       if (!is.null(me)) {
         if (nrow(summary(me)) > 0) {
-          
-          # Rescaling should only happen if the data was transformed
-          if (transform) {
-            N <- nrow(data_internal)
-            rescale_factor <- (10 * N) / (N - 1)
-            
-            me_summary <- summary(me)
-            me_rescaled_summary <- me_summary
-            
-            cols_to_rescale <- c("AME", "SE", "lower", "upper")
-            for (col in cols_to_rescale) {
-              if (col %in% names(me_rescaled_summary)) {
-                me_rescaled_summary[[col]] <- me_rescaled_summary[[col]] * rescale_factor
-              }
+          # Use the row count from the data that was used for the model
+          N <- nrow(data_internal)
+          rescale_factor <- (10 * N) / (N - 1)
+
+          # Create a summary data frame for rescaled effects to avoid modifying the 'margins' object
+          me_summary <- summary(me)
+          me_rescaled_summary <- me_summary
+
+          # Rescale the relevant columns
+          cols_to_rescale <- c("AME", "SE", "lower", "upper")
+          for (col in cols_to_rescale) {
+            if (col %in% names(me_rescaled_summary)) {
+              me_rescaled_summary[[col]] <- me_rescaled_summary[[col]] * rescale_factor
             }
-            
-            # ★★★ 修正点 ★★★
-            # 計算した結果を、関数の戻り値となる変数 `me_rescaled` に格納する
-            me_rescaled <- me_rescaled_summary
           }
 
           if (verbose) {
             cat("\n===== Average Marginal Effects (0–1 Scale) =====\n")
             print(summary(me))
-            
-            # Print rescaled effects only if they were calculated
-            if (!is.null(me_rescaled)) {
-              cat("\n===== Average Marginal Effects (0–10 Scale) =====\n")
-              print(me_rescaled)
-            }
+            cat("\n===== Average Marginal Effects (0–10 Scale) =====\n")
+            print(me_rescaled_summary)
           }
+          # Note: The returned 'me_rescaled' is now a summary data frame, not a 'margins' object
+          me_rescaled <- me_rescaled_summary
         } else {
           warning("Marginal effects were computed but resulted in an empty summary. Rescaling skipped.")
         }
