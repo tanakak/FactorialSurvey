@@ -1,0 +1,36 @@
+url: https://tanakak.github.io/FactorialSurvey/
+
+template:
+  bootstrap: 5
+
+reference:
+- title: Designing the experiment
+  desc: >
+    Build an efficient set of vignettes, check that it is well balanced, and
+    attach the wording respondents will see.
+  contents:
+  - fs_defficient
+  - fs_design_eval
+  - set_labels
+  - print.fs_design
+  - print.fs_design_eval
+
+- title: Estimation
+  desc: Fit models suited to bounded rating outcomes.
+  contents:
+  - fs_betareg
+  - print.fs_betareg
+  - summary.fs_betareg
+  - print.summary.fs_betareg
+  - fs_betareg-extractors
+
+- title: Post-estimation
+  desc: Translate estimates into reportable quantities.
+  contents:
+  - fs_mwtp
+  - print.fs_mwtp
+  - as.data.frame.fs_mwtp
+
+- title: Package
+  contents:
+  - FactorialSurvey-package

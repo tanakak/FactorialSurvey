@@ -1,5 +1,13 @@
 ^FactorialSurvey\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
-^Test_250705\.R$
+^Test_.*\.R$
 ^git$
+^\.github$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^cran-comments\.md$
+^CRAN-SUBMISSION$
+^codecov\.yml$
+^FactorialSurvey_.*\.md$

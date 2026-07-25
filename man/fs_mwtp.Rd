@@ -2,66 +2,117 @@
 % Please edit documentation in R/fs_mwtp.R
 \name{fs_mwtp}
 \alias{fs_mwtp}
-\title{Marginal Willingness to Pay (MWTP) Estimation}
+\title{Marginal willingness to pay from a fitted model}
 \usage{
-fs_mwtp(model_results, variable_name, price_variable_name)
+fs_mwtp(
+  object,
+  variable = NULL,
+  price,
+  method = c("delta", "krinsky-robb", "fieller"),
+  level = 0.95,
+  n_sim = 5000,
+  seed = NULL
+)
 }
 \arguments{
-\item{model_results}{A list object containing a fitted model. This is expected
-to be the output from the \code{fs_betareg} function, where \code{model_results$model}
-is the actual model object.}
+\item{object}{A fitted model: an \code{fs_betareg} object from \code{\link[=fs_betareg]{fs_betareg()}},
+a \code{\link[betareg:betareg]{betareg::betareg()}} fit, or any model for which \code{\link[=coef]{coef()}} and \code{\link[=vcov]{vcov()}}
+return a named vector and a conformable matrix.}
 
-\item{variable_name}{A string specifying the name of the attribute variable for
-which to calculate the MWTP. This name must exactly match a coefficient name
-in the model summary.}
+\item{variable}{The name of the attribute coefficient, as it appears in
+\code{coef(object)}. If \code{NULL} (the default), every coefficient other than the
+intercept, the price coefficient and the precision parameter is used, and
+a table of MWTP values is returned.}
 
-\item{price_variable_name}{A string specifying the name of the price variable.
-This name must also exactly match a coefficient name.}
+\item{price}{The name of the price coefficient.}
+
+\item{method}{The interval method. One of \code{"delta"} (the delta method,
+the default), \code{"krinsky-robb"} (simulation from the estimated sampling
+distribution of the coefficients) or \code{"fieller"} (Fieller's theorem,
+which respects the skewness of a ratio).}
+
+\item{level}{The confidence level. Defaults to \code{0.95}.}
+
+\item{n_sim}{The number of draws used by \code{method = "krinsky-robb"}.}
+
+\item{seed}{A single number making the Krinsky-Robb draws reproducible, or
+\code{NULL}. The caller's random number state is restored on exit.}
 }
 \value{
-An invisible list containing the MWTP point estimate, standard error,
-and 95\% confidence interval. The function also prints a formatted summary of
-these results to the console.
+An object of class \code{fs_mwtp}, a list with components:
+\describe{
+\item{\code{estimates}}{A data frame with one row per attribute and columns
+\code{variable}, \code{mwtp}, \code{std_error}, \code{conf_low} and \code{conf_high}.}
+\item{\code{price}}{The name of the price coefficient.}
+\item{\code{method}}{The interval method used.}
+\item{\code{level}}{The confidence level.}
+\item{\code{draws}}{The simulated MWTP values, for
+\code{method = "krinsky-robb"}; otherwise \code{NULL}.}
+}
 }
 \description{
-Calculates the Marginal Willingness to Pay (MWTP) from a regression
-model result, typically one from \code{fs_betareg}. It computes a point estimate,
-standard error, and confidence interval using the Delta Method.
+Converts a pair of estimated coefficients into a marginal willingness to
+pay (MWTP), the amount of the price attribute a respondent would trade for
+a one-unit improvement in another attribute:
+\deqn{MWTP = -\beta_{attribute} / \beta_{price}.}
+
+Because MWTP is a ratio of two estimates its sampling distribution is
+skewed, and more so the closer the price coefficient sits to zero. Three
+interval methods are therefore offered, and it is worth comparing them
+before reporting a result.
 }
 \details{
-The function calculates MWTP using the formula:
-MWTP = - (coefficient_variable / coefficient_price).
-The standard error is calculated via the Delta Method, which requires the
-\code{msm} package.
+The delta method takes a first-order Taylor expansion of the ratio and
+yields a symmetric interval. It is quick and familiar but understates
+skewness, and can produce implausible intervals when the price coefficient
+is imprecisely estimated.
+
+Krinsky and Robb (1986) draw repeatedly from a multivariate normal with the
+estimated mean and covariance of the coefficients, form the ratio in each
+draw, and read the interval off the empirical quantiles. This captures the
+skewness and is the usual recommendation in the stated preference
+literature.
+
+Fieller's theorem inverts the test that the ratio equals a given value. It
+is exact under normality of the coefficients but the resulting region is
+unbounded when the price coefficient is not clearly distinguishable from
+zero; in that case the interval is returned as \code{NA} with a warning.
+
+The coefficients enter on the scale of the linear predictor. For a beta
+regression with a logit link the ratio is therefore a ratio of effects on
+the latent scale, which is the conventional definition of MWTP but is not
+the same as the ratio of average marginal effects on the response scale.
 }
 \examples{
-\dontrun{
-# 1. First, run the beta regression analysis using fs_betareg
 set.seed(123)
 n <- 200
-survey_data <- data.frame(
-  rating_score = rbeta(n, 3, 4) * 10,
-  design_A = sample(0:1, n, replace = TRUE), # Feature: Design A
-  performance = rnorm(n, 100, 15),          # Feature: Performance metric
-  price = rnorm(n, 500, 50)                 # Price in USD
+d <- data.frame(
+  quality = sample(0:1, n, replace = TRUE),
+  speed   = rnorm(n),
+  price   = runif(n, 100, 1000)
 )
+d$rating <- 10 * plogis(0.8 * d$quality + 0.3 * d$speed -
+                          0.0015 * d$price + rnorm(n, sd = 0.5))
 
-model_fit <- fs_betareg(rating_score ~ design_A + performance + price,
-                        data = survey_data,
-                        verbose = FALSE) # Suppress summary print for cleaner example
+fit <- fs_betareg(rating ~ quality + speed + price, data = d,
+                  compute_me = FALSE)
 
-# 2. Now, calculate MWTP for the 'design_A' feature
-mwtp_design_a <- fs_mwtp(
-  model_results = model_fit,
-  variable_name = "design_A",
-  price_variable_name = "price"
-)
+# All attributes at once
+fs_mwtp(fit, price = "price")
 
-# 3. Calculate MWTP for the 'performance' feature
-mwtp_performance <- fs_mwtp(
-  model_results = model_fit,
-  variable_name = "performance",
-  price_variable_name = "price"
-)
+# A single attribute, with a simulation-based interval
+fs_mwtp(fit, variable = "quality", price = "price",
+        method = "krinsky-robb", n_sim = 500, seed = 1)
 }
+\references{
+Krinsky, I. and Robb, A. L. (1986). On approximating the statistical
+properties of elasticities. \emph{Review of Economics and Statistics}, 68(4),
+715--719. \doi{10.2307/1924536}
+
+Fieller, E. C. (1954). Some problems in interval estimation. \emph{Journal of
+the Royal Statistical Society, Series B}, 16(2), 175--185.
+\doi{10.1111/j.2517-6161.1954.tb00159.x}
+}
+\seealso{
+\code{\link[=fs_betareg]{fs_betareg()}}
 }

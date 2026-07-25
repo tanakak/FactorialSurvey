@@ -2,49 +2,113 @@
 % Please edit documentation in R/fs_defficient.R
 \name{fs_defficient}
 \alias{fs_defficient}
-\title{Generate D-Efficient Designs for Factorial Surveys}
+\title{Generate a D-efficient set of vignettes for a factorial survey}
 \usage{
 fs_defficient(
   factors,
   n_vignettes,
   n_blocks = 1,
-  seed = NULL,
+  model = ~.,
+  restrictions = NULL,
   n_repeats = 50,
   shuffle_within_blocks = TRUE,
-  export_csv = FALSE,
-  file_name = NULL,
+  seed = NULL,
+  max_candidates = 1e+05,
   verbose = TRUE
 )
 }
 \arguments{
-\item{factors}{A list defining the factors and their levels.}
+\item{factors}{A named list defining the attributes and their levels, in
+the form accepted by \code{\link[=expand.grid]{expand.grid()}}. Each element may be numeric,
+character or a factor.}
 
-\item{n_vignettes}{The total number of profiles (vignettes) to generate.}
+\item{n_vignettes}{The number of vignettes to select. Must not exceed the
+number of distinct combinations, and must be at least the number of
+parameters implied by \code{model}.}
 
-\item{n_blocks}{The number of blocks (sets to be shown to respondents).
+\item{n_blocks}{The number of blocks the vignettes are divided into.
 \code{n_vignettes} must be divisible by \code{n_blocks}.}
 
-\item{seed}{A random seed for reproducibility. Set to \code{NULL} for no seed.}
+\item{model}{A one-sided formula giving the model the design should be
+efficient for. The default \code{~ .} covers main effects only; use \code{~ .^2} to
+make the design efficient for two-way interactions as well.}
 
-\item{n_repeats}{The number of search attempts for the D-efficient design.}
+\item{restrictions}{An optional one-sided formula, or a list of such
+formulas, describing combinations that must \strong{not} appear. Each formula
+is evaluated within the full factorial and rows for which it is \code{TRUE}
+are removed before the search, for example
+\code{~ tenure == "new" & condition == "derelict"}.}
 
-\item{shuffle_within_blocks}{A logical value indicating whether to randomize
-the row order within each block.}
+\item{n_repeats}{The number of random starts used by the exchange
+algorithm. Larger values search harder at the cost of run time.}
 
-\item{export_csv}{A logical value indicating whether to save the results as a
-CSV file.}
+\item{shuffle_within_blocks}{A logical value. If \code{TRUE} (the default), the
+row order within each block is randomised, which helps to break up order
+effects in the questionnaire.}
 
-\item{file_name}{The file name for the CSV. If not specified, it will be
-named automatically.}
+\item{seed}{A single number used to make the search and the shuffling
+reproducible, or \code{NULL} for no seed. The state of the caller's random
+number generator is restored when the function returns.}
 
-\item{verbose}{A logical value. If TRUE, prints progress updates.}
+\item{max_candidates}{The largest candidate set the function will build
+before giving up, as a guard against an accidentally enormous factorial.}
+
+\item{verbose}{A logical value. If \code{TRUE} (the default), progress is
+reported through \code{\link[=message]{message()}}.}
 }
 \value{
-A data frame (of class \code{fse_design}) containing the D-efficiently
-selected profiles and a block column.
+An object of class \code{fs_design}, which inherits from \code{data.frame}.
+It has one row per selected vignette, the attribute columns, and a
+\code{block} column. The following attributes are attached:
+\describe{
+\item{\code{factors}}{The list of attributes and levels supplied.}
+\item{\code{d_efficiency}}{The D-efficiency reported by
+\code{\link[AlgDesign:Federov]{AlgDesign::optFederov()}}, relative to a hypothetical orthogonal
+design.}
+\item{\code{d_criterion}}{The determinant-based criterion value.}
+\item{\code{n_candidates}}{The number of candidate combinations searched.}
+\item{\code{model}}{The model formula the design was optimised for.}
+}
 }
 \description{
-Generates an optimal set of profiles (vignettes) for a factorial
-survey experiment based on the D-efficiency criterion. This function
-handles the extraction, blocking, and shuffling of vignettes.
+Selects a subset of the full factorial that is efficient for estimating the
+effects of the attributes, using the exchange algorithm of
+\code{\link[AlgDesign:Federov]{AlgDesign::optFederov()}}, and splits the selected vignettes into blocks
+that can be administered to different respondents.
+}
+\details{
+Blocks are formed by shuffling the selected vignettes and dealing them out
+in equal numbers. This keeps block sizes exactly equal and is robust for
+any combination of attributes, but it does not optimise efficiency \emph{within}
+each block. When every respondent sees one block and effects are estimated
+by pooling across respondents, this is the relevant behaviour. Optimal
+blocking through \code{\link[AlgDesign:blockOpt]{AlgDesign::optBlock()}} is planned for a future release.
+
+The function does not write files. To save a design, pass the returned
+object to \code{\link[utils:write.table]{utils::write.csv()}} yourself.
+}
+\examples{
+attrs <- list(
+  damage   = c("minor", "moderate", "severe"),
+  distance = c("near", "far"),
+  cost     = c(100, 500, 1000)
+)
+
+d <- fs_defficient(attrs, n_vignettes = 12, n_blocks = 2,
+                   seed = 42, verbose = FALSE)
+head(as.data.frame(d))
+table(d$block)
+
+# Exclude a combination that would not make sense to a respondent
+d2 <- fs_defficient(attrs, n_vignettes = 9,
+                    restrictions = ~ damage == "minor" & cost == 1000,
+                    seed = 42, verbose = FALSE)
+any(d2$damage == "minor" & d2$cost == 1000)
+}
+\references{
+Federov, V. V. (1972). \emph{Theory of Optimal Experiments}. Academic Press.
+}
+\seealso{
+\code{\link[=fs_design_eval]{fs_design_eval()}} for level balance and correlation diagnostics,
+\code{\link[=set_labels]{set_labels()}} for attaching the wording shown to respondents.
 }
