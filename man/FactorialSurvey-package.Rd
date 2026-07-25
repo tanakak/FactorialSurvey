@@ -63,7 +63,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Katsuya Tanaka \email{katsuya.dm@gmail.com}
+\strong{Maintainer}: Katsuya Tanaka \email{katsuyat@gmail.com}
 
 }
 \keyword{internal}
