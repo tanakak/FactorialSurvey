@@ -10,6 +10,7 @@ fs_defficient(
   n_blocks = 1,
   model = ~.,
   restrictions = NULL,
+  blocking = c("optimal", "random"),
   n_repeats = 50,
   shuffle_within_blocks = TRUE,
   seed = NULL,
@@ -39,12 +40,19 @@ is evaluated within the full factorial and rows for which it is \code{TRUE}
 are removed before the search, for example
 \code{~ tenure == "new" & condition == "derelict"}.}
 
+\item{blocking}{How the selected vignettes are divided into blocks. Either
+\code{"optimal"} (the default), which uses \code{\link[AlgDesign:blockOpt]{AlgDesign::optBlock()}} to make each
+block as informative as possible on its own, or \code{"random"}, which shuffles
+the vignettes and deals them out in equal numbers. Ignored when
+\code{n_blocks} is 1.}
+
 \item{n_repeats}{The number of random starts used by the exchange
 algorithm. Larger values search harder at the cost of run time.}
 
 \item{shuffle_within_blocks}{A logical value. If \code{TRUE} (the default), the
 row order within each block is randomised, which helps to break up order
-effects in the questionnaire.}
+effects in the questionnaire. For a systematic treatment of order, see
+\code{\link[=fs_assign]{fs_assign()}}.}
 
 \item{seed}{A single number used to make the search and the shuffling
 reproducible, or \code{NULL} for no seed. The state of the caller's random
@@ -68,6 +76,9 @@ design.}
 \item{\code{d_criterion}}{The determinant-based criterion value.}
 \item{\code{n_candidates}}{The number of candidate combinations searched.}
 \item{\code{model}}{The model formula the design was optimised for.}
+\item{\code{blocking}}{The blocking method used.}
+\item{\code{block_criterion}}{The blocked D-criterion from
+\code{\link[AlgDesign:blockOpt]{AlgDesign::optBlock()}}, or \code{NA} for random or absent blocking.}
 }
 }
 \description{
@@ -77,15 +88,20 @@ effects of the attributes, using the exchange algorithm of
 that can be administered to different respondents.
 }
 \details{
-Blocks are formed by shuffling the selected vignettes and dealing them out
-in equal numbers. This keeps block sizes exactly equal and is robust for
-any combination of attributes, but it does not optimise efficiency \emph{within}
-each block. When every respondent sees one block and effects are estimated
-by pooling across respondents, this is the relevant behaviour. Optimal
-blocking through \code{\link[AlgDesign:blockOpt]{AlgDesign::optBlock()}} is planned for a future release.
+With \code{blocking = "optimal"} the selected vignettes are allocated to blocks
+by \code{\link[AlgDesign:blockOpt]{AlgDesign::optBlock()}}, which searches for an allocation that keeps each
+block as informative as possible in its own right. This matters when a
+respondent sees only one block and you want each block to support
+within-respondent comparisons. With \code{blocking = "random"} the vignettes are
+shuffled and dealt out; block sizes are still exactly equal, but nothing
+guarantees that any individual block is well balanced.
 
-The function does not write files. To save a design, pass the returned
-object to \code{\link[utils:write.table]{utils::write.csv()}} yourself.
+Optimal blocking is the better default, but it is a search: with an awkward
+number of blocks it can fail to converge, in which case the function falls
+back to random allocation and says so.
+
+The function does not write files. Use \code{\link[=fs_export]{fs_export()}} to write a design to
+disk in a form a survey platform will accept.
 }
 \examples{
 attrs <- list(
@@ -110,5 +126,7 @@ Federov, V. V. (1972). \emph{Theory of Optimal Experiments}. Academic Press.
 }
 \seealso{
 \code{\link[=fs_design_eval]{fs_design_eval()}} for level balance and correlation diagnostics,
-\code{\link[=set_labels]{set_labels()}} for attaching the wording shown to respondents.
+\code{\link[=set_labels]{set_labels()}} for attaching the wording shown to respondents,
+\code{\link[=fs_vignette_text]{fs_vignette_text()}} for turning rows into prose, \code{\link[=fs_assign]{fs_assign()}} for
+allocating blocks and presentation orders to respondents.
 }

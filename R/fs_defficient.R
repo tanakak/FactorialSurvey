@@ -22,11 +22,17 @@
 #'   is evaluated within the full factorial and rows for which it is `TRUE`
 #'   are removed before the search, for example
 #'   `~ tenure == "new" & condition == "derelict"`.
+#' @param blocking How the selected vignettes are divided into blocks. Either
+#'   `"optimal"` (the default), which uses [AlgDesign::optBlock()] to make each
+#'   block as informative as possible on its own, or `"random"`, which shuffles
+#'   the vignettes and deals them out in equal numbers. Ignored when
+#'   `n_blocks` is 1.
 #' @param n_repeats The number of random starts used by the exchange
 #'   algorithm. Larger values search harder at the cost of run time.
 #' @param shuffle_within_blocks A logical value. If `TRUE` (the default), the
 #'   row order within each block is randomised, which helps to break up order
-#'   effects in the questionnaire.
+#'   effects in the questionnaire. For a systematic treatment of order, see
+#'   [fs_assign()].
 #' @param seed A single number used to make the search and the shuffling
 #'   reproducible, or `NULL` for no seed. The state of the caller's random
 #'   number generator is restored when the function returns.
@@ -46,21 +52,31 @@
 #'     \item{`d_criterion`}{The determinant-based criterion value.}
 #'     \item{`n_candidates`}{The number of candidate combinations searched.}
 #'     \item{`model`}{The model formula the design was optimised for.}
+#'     \item{`blocking`}{The blocking method used.}
+#'     \item{`block_criterion`}{The blocked D-criterion from
+#'       [AlgDesign::optBlock()], or `NA` for random or absent blocking.}
 #'   }
 #'
 #' @details
-#' Blocks are formed by shuffling the selected vignettes and dealing them out
-#' in equal numbers. This keeps block sizes exactly equal and is robust for
-#' any combination of attributes, but it does not optimise efficiency *within*
-#' each block. When every respondent sees one block and effects are estimated
-#' by pooling across respondents, this is the relevant behaviour. Optimal
-#' blocking through [AlgDesign::optBlock()] is planned for a future release.
+#' With `blocking = "optimal"` the selected vignettes are allocated to blocks
+#' by [AlgDesign::optBlock()], which searches for an allocation that keeps each
+#' block as informative as possible in its own right. This matters when a
+#' respondent sees only one block and you want each block to support
+#' within-respondent comparisons. With `blocking = "random"` the vignettes are
+#' shuffled and dealt out; block sizes are still exactly equal, but nothing
+#' guarantees that any individual block is well balanced.
 #'
-#' The function does not write files. To save a design, pass the returned
-#' object to [utils::write.csv()] yourself.
+#' Optimal blocking is the better default, but it is a search: with an awkward
+#' number of blocks it can fail to converge, in which case the function falls
+#' back to random allocation and says so.
+#'
+#' The function does not write files. Use [fs_export()] to write a design to
+#' disk in a form a survey platform will accept.
 #'
 #' @seealso [fs_design_eval()] for level balance and correlation diagnostics,
-#'   [set_labels()] for attaching the wording shown to respondents.
+#'   [set_labels()] for attaching the wording shown to respondents,
+#'   [fs_vignette_text()] for turning rows into prose, [fs_assign()] for
+#'   allocating blocks and presentation orders to respondents.
 #'
 #' @references
 #' Federov, V. V. (1972). *Theory of Optimal Experiments*. Academic Press.
@@ -89,6 +105,7 @@ fs_defficient <- function(factors,
                           n_blocks = 1,
                           model = ~ .,
                           restrictions = NULL,
+                          blocking = c("optimal", "random"),
                           n_repeats = 50,
                           shuffle_within_blocks = TRUE,
                           seed = NULL,
@@ -106,6 +123,7 @@ fs_defficient <- function(factors,
     stop("Every attribute in `factors` must have at least two levels.",
          call. = FALSE)
   }
+  blocking <- match.arg(blocking)
   check_count(n_vignettes)
   check_count(n_blocks)
   check_count(n_repeats)
@@ -174,13 +192,31 @@ fs_defficient <- function(factors,
   say(verbose, "D-efficiency: ", round(search$Dea, 4))
 
   ## ---- Blocking -----------------------------------------------------------
+  block_criterion <- NA_real_
+  blocking_used <- if (n_blocks > 1L) blocking else "none"
+
   if (n_blocks > 1L) {
-    say(verbose, "Dividing into ", n_blocks, " blocks.")
-    design <- design[sample.int(nrow(design)), , drop = FALSE]
-    design$block <- rep(seq_len(n_blocks), each = n_vignettes / n_blocks)
+    say(verbose, "Dividing into ", n_blocks, " blocks (", blocking, ").")
+    if (blocking == "optimal") {
+      blocked <- try_opt_block(design, model, n_blocks, n_repeats)
+      if (is.null(blocked)) {
+        warning("Optimal blocking did not converge; falling back to random ",
+                "allocation.", call. = FALSE)
+        blocking_used <- "random"
+      } else {
+        design <- blocked$design
+        block_criterion <- blocked$criterion
+        say(verbose, "Blocked D-criterion: ", round(block_criterion, 4))
+      }
+    }
+    if (blocking_used == "random") {
+      design <- design[sample.int(nrow(design)), , drop = FALSE]
+      design$block <- rep(seq_len(n_blocks), each = n_vignettes / n_blocks)
+    }
   } else {
     design$block <- 1L
   }
+  rownames(design) <- NULL
 
   ## ---- Shuffle within blocks ----------------------------------------------
   if (shuffle_within_blocks) {
@@ -193,15 +229,68 @@ fs_defficient <- function(factors,
   rownames(design) <- NULL
 
   ## ---- Assemble -----------------------------------------------------------
-  attr(design, "factors")      <- factors
-  attr(design, "d_efficiency") <- search$Dea
-  attr(design, "d_criterion")  <- search$D
-  attr(design, "n_candidates") <- n_candidates
-  attr(design, "model")        <- model
+  attr(design, "factors")         <- factors
+  attr(design, "d_efficiency")    <- search$Dea
+  attr(design, "d_criterion")     <- search$D
+  attr(design, "n_candidates")    <- n_candidates
+  attr(design, "model")           <- model
+  attr(design, "blocking")        <- blocking_used
+  attr(design, "block_criterion") <- block_criterion
   class(design) <- c("fs_design", "data.frame")
 
   say(verbose, "Done.")
   design
+}
+
+
+#' Allocate selected vignettes to blocks with AlgDesign::optBlock()
+#'
+#' @param design The data frame of selected vignettes.
+#' @param model The model formula the design was optimised for.
+#' @param n_blocks Number of blocks.
+#' @param n_repeats Number of random starts.
+#' @return A list with the blocked `design` (carrying a `block` column) and the
+#'   blocked D-`criterion`, or `NULL` when the search fails or returns an
+#'   allocation that does not use every vignette exactly once.
+#' @noRd
+try_opt_block <- function(design, model, n_blocks, n_repeats) {
+  sizes <- rep(nrow(design) / n_blocks, n_blocks)
+
+  blocked <- tryCatch(
+    suppressWarnings(
+      AlgDesign::optBlock(
+        frml       = model,
+        withinData = design,
+        blocksizes = sizes,
+        nRepeats   = n_repeats
+      )
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(blocked) || is.null(blocked$Blocks)) {
+    return(NULL)
+  }
+
+  ## optBlock returns one data frame per block. Guard against an allocation
+  ## that silently drops or reuses vignettes.
+  block_sizes <- unname(vapply(blocked$Blocks, nrow, integer(1L)))
+  if (length(blocked$Blocks) != n_blocks ||
+      !identical(block_sizes, as.integer(sizes))) {
+    return(NULL)
+  }
+  if (!is.null(blocked$rows) &&
+      !identical(sort(unique(blocked$rows)), sort(blocked$rows))) {
+    return(NULL)
+  }
+
+  out <- do.call(rbind, lapply(seq_along(blocked$Blocks), function(i) {
+    part <- as.data.frame(blocked$Blocks[[i]])
+    part$block <- i
+    part
+  }))
+  rownames(out) <- NULL
+
+  list(design = out, criterion = blocked$D)
 }
 
 
@@ -262,7 +351,8 @@ apply_restrictions <- function(candidates, restrictions, verbose = FALSE) {
 print.fs_design <- function(x, n = 10L, ...) {
   cat("Factorial survey design\n")
   cat("  Vignettes    :", nrow(x), "\n")
-  cat("  Blocks       :", length(unique(x$block)), "\n")
+  cat("  Blocks       :", length(unique(x$block)),
+      paste0("(", attr(x, "blocking"), ")"), "\n")
   cat("  Attributes   :", length(attr(x, "factors")), "\n")
   cat("  Candidates   :", attr(x, "n_candidates"), "\n")
   cat("  D-efficiency :", fmt(attr(x, "d_efficiency")), "\n\n")

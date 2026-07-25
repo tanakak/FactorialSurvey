@@ -1,29 +1,33 @@
 Package: FactorialSurvey
 Type: Package
 Title: Design and Analysis of Factorial Survey (Vignette) Experiments
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person("Katsuya", "Tanaka", , "katsuya.dm@gmail.com", role = c("aut", "cre")))
 Description: An integrated workflow for factorial survey (vignette) experiments.
-    Constructs D-efficient sets of vignettes from a factorial structure, splits
-    them into blocks for administration to respondents, estimates models for
-    bounded rating outcomes using beta regression, and derives average marginal
-    effects and marginal willingness to pay with delta-method standard errors.
-    Efficient designs are obtained with the exchange algorithms of Federov
-    (1972, ISBN:0122507509) as implemented in 'AlgDesign'. Beta regression
-    follows Ferrari and Cribari-Neto (2004)
-    <doi:10.1080/0266476042000214501>. Bounded ratings are mapped to the open
-    unit interval following Smithson and Verkuilen (2006)
+    Constructs D-efficient sets of vignettes from a factorial structure,
+    allocates them to blocks and to respondents in carryover-balanced orders,
+    renders them as prose, writes them out for survey platforms, estimates
+    models for bounded rating outcomes using beta regression, and derives
+    average marginal effects and marginal willingness to pay with delta-method
+    standard errors. Efficient designs and optimal blocking are obtained with
+    the exchange algorithms of Federov (1972, ISBN:0122507509) as implemented
+    in 'AlgDesign'. Presentation orders follow Williams (1949)
+    <doi:10.1071/CH9490149>. Beta regression follows Ferrari and Cribari-Neto
+    (2004) <doi:10.1080/0266476042000214501>. Bounded ratings are mapped to
+    the open unit interval following Smithson and Verkuilen (2006)
     <doi:10.1037/1082-989X.11.1.54>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.1)
 Imports:
     stats,
+    tools,
     utils,
     AlgDesign,
     betareg
 Suggests:
+    openxlsx,
     margins,
     msm,
     testthat (>= 3.0.0),

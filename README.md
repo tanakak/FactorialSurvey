@@ -84,7 +84,39 @@ design <- set_labels(
 )
 ```
 
-### 3. Fit the model
+### 3. Write the vignettes and schedule the respondents
+
+`fs_vignette_text()` fills a template with each row's levels. Formatting
+functions render numbers the way respondents should read them, without
+altering the design columns.
+
+```r
+design <- fs_vignette_text(
+  design,
+  "A {{damage}} damaged building {{distance}}. Repairs cost {{cost}} a year.",
+  format = list(cost = function(x) paste0("$", formatC(x, big.mark = ",")))
+)
+```
+
+`fs_assign()` deals blocks out to respondents and orders the vignettes within
+each block using a Williams design, so that no attribute is confounded with
+position or with the vignette a respondent happened to see just before.
+
+```r
+schedule <- fs_assign(design, n_respondents = 200, seed = 1)
+```
+
+`fs_export()` writes the result out. CSV files carry a UTF-8 byte order mark
+by default, which is what makes non-ASCII text open correctly in Excel on
+Windows.
+
+```r
+fs_export(design, "vignettes.csv")
+fs_export(design, "loop.csv", format = "qualtrics")   # one file per block
+fs_export(schedule, "schedule.xlsx", format = "xlsx") # one sheet per block
+```
+
+### 4. Fit the model
 
 `fs_betareg()` maps the rating scale onto the open unit interval and fits a
 beta regression, which respects the bounds of the scale instead of assuming
@@ -102,7 +134,7 @@ Average marginal effects are reported both on the unit interval and rescaled
 back onto the original 0--10 scale, so they can be read as "this attribute
 moves the rating by so many points".
 
-### 4. Marginal willingness to pay
+### 5. Marginal willingness to pay
 
 ```r
 fs_mwtp(fit, price = "cost")
@@ -117,16 +149,15 @@ Fieller's theorem -- and it is worth comparing them before reporting a result.
 
 | Stage | Functions |
 |---|---|
-| Design | `fs_defficient()`, `fs_design_eval()`, `set_labels()` |
+| Design | `fs_defficient()`, `fs_design_eval()` |
+| Fielding | `set_labels()`, `fs_vignette_text()`, `fs_williams()`, `fs_assign()`, `fs_export()` |
 | Estimation | `fs_betareg()` |
 | Post-estimation | `fs_mwtp()` |
 
 ## Roadmap
 
-This is version 0.1.0. Planned for future releases:
+This is version 0.2.0. Planned for future releases:
 
-- vignette text generation and export to survey platforms
-- optimal blocking and control of presentation order
 - ordered beta regression for ratings that pile up at the endpoints
 - cluster-robust standard errors for respondents who rate several vignettes
 - respondent-level heterogeneity: multilevel, random-parameter and

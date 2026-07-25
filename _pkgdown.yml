@@ -6,14 +6,24 @@ template:
 reference:
 - title: Designing the experiment
   desc: >
-    Build an efficient set of vignettes, check that it is well balanced, and
-    attach the wording respondents will see.
+    Build an efficient set of vignettes and check that it is well balanced.
   contents:
   - fs_defficient
   - fs_design_eval
-  - set_labels
   - print.fs_design
   - print.fs_design_eval
+
+- title: Fielding the experiment
+  desc: >
+    Attach the wording respondents will see, allocate blocks and presentation
+    orders, and write everything out for a survey platform.
+  contents:
+  - set_labels
+  - fs_vignette_text
+  - fs_williams
+  - fs_assign
+  - print.fs_assignment
+  - fs_export
 
 - title: Estimation
   desc: Fit models suited to bounded rating outcomes.

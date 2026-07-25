@@ -26,11 +26,60 @@ test_that("attributes carry the design metadata", {
 })
 
 test_that("blocks are equal in size and cover every vignette", {
+  for (method in c("optimal", "random")) {
+    d <- fs_defficient(attrs, n_vignettes = 12, n_blocks = 3,
+                       blocking = method, seed = 2, verbose = FALSE)
+
+    expect_equal(as.integer(table(d$block)), rep(4L, 3L))
+    expect_setequal(unique(d$block), 1:3)
+
+    # No vignette is duplicated or lost by the allocation
+    body <- as.data.frame(d)[, names(attrs)]
+    expect_equal(anyDuplicated(body), 0L, info = method)
+    expect_equal(nrow(body), 12L, info = method)
+  }
+})
+
+test_that("optimal blocking is the default and is recorded", {
   d <- fs_defficient(attrs, n_vignettes = 12, n_blocks = 3,
                      seed = 2, verbose = FALSE)
 
-  expect_equal(as.integer(table(d$block)), rep(4L, 3L))
-  expect_setequal(unique(d$block), 1:3)
+  expect_equal(attr(d, "blocking"), "optimal")
+  expect_true(is.numeric(attr(d, "block_criterion")))
+  expect_false(is.na(attr(d, "block_criterion")))
+})
+
+test_that("random blocking is recorded and has no block criterion", {
+  d <- fs_defficient(attrs, n_vignettes = 12, n_blocks = 3,
+                     blocking = "random", seed = 2, verbose = FALSE)
+
+  expect_equal(attr(d, "blocking"), "random")
+  expect_true(is.na(attr(d, "block_criterion")))
+})
+
+test_that("a single block records no blocking method", {
+  d <- fs_defficient(attrs, n_vignettes = 12, seed = 2, verbose = FALSE)
+
+  expect_equal(attr(d, "blocking"), "none")
+  expect_equal(unique(d$block), 1L)
+})
+
+test_that("optimal blocking spreads levels across blocks better than random", {
+  # The point of optBlock(): each block should look like the whole design.
+  # Measured as total absolute deviation from an equal split.
+  imbalance <- function(d) {
+    ev <- fs_design_eval(d)
+    sum(vapply(ev$balance_by_block, function(tab) {
+      sum(abs(tab - mean(tab)))
+    }, numeric(1L)))
+  }
+
+  opt <- fs_defficient(attrs, n_vignettes = 12, n_blocks = 3,
+                       blocking = "optimal", seed = 11, verbose = FALSE)
+  rnd <- fs_defficient(attrs, n_vignettes = 12, n_blocks = 3,
+                       blocking = "random", seed = 11, verbose = FALSE)
+
+  expect_lte(imbalance(opt), imbalance(rnd))
 })
 
 test_that("the seed makes the design reproducible", {
