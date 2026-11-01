@@ -14,7 +14,7 @@ make_wtp_data <- function(n = 250, seed = 7) {
 
 fit_wtp <- function(...) {
   fs_betareg(rating ~ quality + speed + price, data = make_wtp_data(),
-             compute_me = FALSE, ...)
+             compute_me = FALSE, ..., cluster = FALSE)
 }
 
 test_that("fs_mwtp returns every attribute by default", {
@@ -113,7 +113,7 @@ test_that("Fieller warns and returns NA when the price effect is weak", {
   n <- 60
   d <- data.frame(x = rnorm(n), price = rnorm(n, sd = 0.01))
   d$rating <- 10 * plogis(0.5 * d$x + rnorm(n, sd = 1))
-  fit <- fs_betareg(rating ~ x + price, data = d, compute_me = FALSE)
+  fit <- fs_betareg(rating ~ x + price, data = d, compute_me = FALSE, cluster = FALSE)
 
   expect_warning(res <- fs_mwtp(fit, "x", price = "price", method = "fieller"),
                  "unbounded")

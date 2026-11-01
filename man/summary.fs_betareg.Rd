@@ -21,7 +21,8 @@ Summarise a fitted factorial survey beta regression
 }
 \examples{
 set.seed(1)
-d <- data.frame(x = rnorm(60))
+d <- data.frame(id = rep(1:20, each = 3), x = rnorm(60))
 d$rating <- 10 * plogis(0.5 * d$x + rnorm(60, sd = 0.4))
-summary(fs_betareg(rating ~ x, data = d, compute_me = FALSE))
+summary(fs_betareg(rating ~ x, data = d, cluster = ~ id,
+               compute_me = FALSE))
 }

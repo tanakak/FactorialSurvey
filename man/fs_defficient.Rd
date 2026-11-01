@@ -9,6 +9,7 @@ fs_defficient(
   n_vignettes,
   n_blocks = 1,
   model = ~.,
+  linear = NULL,
   restrictions = NULL,
   blocking = c("optimal", "random"),
   n_repeats = 50,
@@ -21,7 +22,10 @@ fs_defficient(
 \arguments{
 \item{factors}{A named list defining the attributes and their levels, in
 the form accepted by \code{\link[=expand.grid]{expand.grid()}}. Each element may be numeric,
-character or a factor.}
+character or a factor. Every attribute is treated as categorical during
+the search, so that each of its levels appears in the design, even when
+the levels are numbers such as \code{1:3} or \code{c(400, 600, 800)}; see
+\code{linear} for the exception.}
 
 \item{n_vignettes}{The number of vignettes to select. Must not exceed the
 number of distinct combinations, and must be at least the number of
@@ -33,6 +37,14 @@ parameters implied by \code{model}.}
 \item{model}{A one-sided formula giving the model the design should be
 efficient for. The default \code{~ .} covers main effects only; use \code{~ .^2} to
 make the design efficient for two-way interactions as well.}
+
+\item{linear}{An optional character vector naming numeric attributes for
+which only a linear effect is to be estimated. The design is then made
+efficient for a slope rather than for separate level effects, which
+pushes the selection towards the extreme levels and may leave
+intermediate levels out altogether. Leave it \code{NULL} (the default) unless
+that is what you want: a price attribute that will enter the analysis as
+a continuous variable is still best given all its levels in the design.}
 
 \item{restrictions}{An optional one-sided formula, or a list of such
 formulas, describing combinations that must \strong{not} appear. Each formula
@@ -70,15 +82,17 @@ It has one row per selected vignette, the attribute columns, and a
 \code{block} column. The following attributes are attached:
 \describe{
 \item{\code{factors}}{The list of attributes and levels supplied.}
-\item{\code{d_efficiency}}{The D-efficiency reported by
-\code{\link[AlgDesign:Federov]{AlgDesign::optFederov()}}, relative to a hypothetical orthogonal
-design.}
-\item{\code{d_criterion}}{The determinant-based criterion value.}
+\item{\code{d_efficiency}}{The D-efficiency in percent, relative to a
+hypothetical orthogonal design of the same size; see
+\code{\link[=fs_efficiency]{fs_efficiency()}}.}
+\item{\code{a_efficiency}}{The A-efficiency in percent.}
+\item{\code{linear}}{The attributes treated as linear.}
 \item{\code{n_candidates}}{The number of candidate combinations searched.}
 \item{\code{model}}{The model formula the design was optimised for.}
 \item{\code{blocking}}{The blocking method used.}
-\item{\code{block_criterion}}{The blocked D-criterion from
-\code{\link[AlgDesign:blockOpt]{AlgDesign::optBlock()}}, or \code{NA} for random or absent blocking.}
+\item{\code{block_criterion}}{The raw blocked criterion from
+\code{\link[AlgDesign:blockOpt]{AlgDesign::optBlock()}}, or \code{NA} for random or absent blocking. It is
+an internal search criterion, not an efficiency.}
 }
 }
 \description{
@@ -88,6 +102,17 @@ effects of the attributes, using the exchange algorithm of
 that can be administered to different respondents.
 }
 \details{
+The search is carried out with every attribute coded as a factor, so the
+design is efficient for estimating a separate effect for each level. This
+matters when levels are supplied as numbers: treated as a continuous
+variable, a three-level attribute coded \code{1:3} would be optimised for a
+slope, and the middle level would rarely or never be shown. Attributes
+named in \code{linear} are the deliberate exception. In the returned design the
+columns keep the type of the levels supplied: numbers stay numbers.
+
+The reported D- and A-efficiencies follow Kuhfeld, Tobias and Garratt
+(1994) and equal 100 for an orthogonal array. See \code{\link[=fs_efficiency]{fs_efficiency()}}.
+
 With \code{blocking = "optimal"} the selected vignettes are allocated to blocks
 by \code{\link[AlgDesign:blockOpt]{AlgDesign::optBlock()}}, which searches for an allocation that keeps each
 block as informative as possible in its own right. This matters when a
@@ -123,8 +148,13 @@ any(d2$damage == "minor" & d2$cost == 1000)
 }
 \references{
 Federov, V. V. (1972). \emph{Theory of Optimal Experiments}. Academic Press.
+
+Kuhfeld, W. F., Tobias, R. D. and Garratt, M. (1994). Efficient
+experimental design with marketing research applications. \emph{Journal of
+Marketing Research}, 31(4), 545--557. \doi{10.1177/002224379403100408}
 }
 \seealso{
+\code{\link[=fs_efficiency]{fs_efficiency()}} for the efficiency of any design,
 \code{\link[=fs_design_eval]{fs_design_eval()}} for level balance and correlation diagnostics,
 \code{\link[=set_labels]{set_labels()}} for attaching the wording shown to respondents,
 \code{\link[=fs_vignette_text]{fs_vignette_text()}} for turning rows into prose, \code{\link[=fs_assign]{fs_assign()}} for

@@ -21,8 +21,10 @@ Print marginal willingness to pay estimates
 }
 \examples{
 set.seed(1)
-d <- data.frame(x = rnorm(120), price = runif(120, 100, 900))
+d <- data.frame(id = rep(1:40, each = 3), x = rnorm(120),
+                price = runif(120, 100, 900))
 d$rating <- 10 * plogis(0.7 * d$x - 0.002 * d$price + rnorm(120, sd = 0.4))
-fit <- fs_betareg(rating ~ x + price, data = d, compute_me = FALSE)
+fit <- fs_betareg(rating ~ x + price, data = d, cluster = ~ id,
+                  compute_me = FALSE)
 print(fs_mwtp(fit, price = "price"))
 }

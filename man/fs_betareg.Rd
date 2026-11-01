@@ -9,6 +9,7 @@ fs_betareg(
   data,
   scale = c(0, 10),
   transform = TRUE,
+  cluster = NULL,
   compute_me = TRUE,
   verbose = FALSE,
   ...
@@ -29,6 +30,16 @@ bound of the observed rating scale. The default \code{c(0, 10)} matches a
 rescaled from \code{scale} onto the open interval (0, 1). If \code{FALSE}, the
 response is assumed to already lie strictly inside (0, 1).}
 
+\item{cluster}{How to account for the fact that each respondent rates
+several vignettes. Give the respondent identifier as a one-sided formula
+such as \code{~ id}, as the name of a column of \code{data}, or as a vector with
+one element per row of \code{data}. Standard errors, marginal effects and
+everything computed from them -- including \code{\link[=fs_mwtp]{fs_mwtp()}} -- are then
+cluster-robust. Use \code{FALSE} to treat every rating as independent. The
+default \code{NULL} does the same but issues a warning, because in a factorial
+survey independence is almost never true and ordinary standard errors
+are then not valid.}
+
 \item{compute_me}{A logical value. If \code{TRUE} (the default), average
 marginal effects are computed with the \pkg{margins} package when it is
 installed.}
@@ -44,6 +55,11 @@ the fitted model.}
 An object of class \code{fs_betareg}, a list with components:
 \describe{
 \item{\code{model}}{The fitted \code{\link[betareg:betareg]{betareg::betareg()}} object.}
+\item{\code{vcov}}{The covariance matrix of the estimates used for all
+inference: cluster-robust when \code{cluster} is given, otherwise the
+model-based matrix.}
+\item{\code{cluster}}{A list describing the clustering (\code{name},
+\code{n_clusters}), or \code{NULL}.}
 \item{\code{marginal_effects}}{The \code{margins} object, or \code{NULL}.}
 \item{\code{marginal_effects_rescaled}}{A data frame of average marginal
 effects expressed on the original rating scale, or \code{NULL}.}
@@ -84,6 +100,14 @@ model that this function fits for the purpose. \code{pseudo_r2_betareg} is the
 value \pkg{betareg} itself reports, namely the squared correlation between
 the linear predictor and the link-transformed response.
 
+With \code{cluster}, the covariance matrix is the cluster-robust sandwich
+estimator of \code{\link[sandwich:vcovCL]{sandwich::vcovCL()}} with the usual \eqn{G / (G - 1)}
+small-sample adjustment, where \eqn{G} is the number of respondents. It
+allows the ratings of one respondent to be correlated in any way, which is
+what a respondent-specific taste or response style produces. With few
+respondents (say, fewer than 30) these standard errors are themselves
+imprecise.
+
 McFadden's \eqn{1 - \ell / \ell_0} is deliberately \strong{not} reported. It is
 designed for discrete outcomes, whose log-likelihoods are always negative.
 A beta regression is a continuous density, so its log-likelihood is
@@ -93,22 +117,32 @@ behaved regardless of the sign of the log-likelihood.
 }
 \section{Clustered data}{
 
-When each respondent rates several vignettes the observations are not
-independent, and the standard errors reported here are too small. Treat
-them as optimistic until cluster-robust or mixed-effects support is added.
+When each respondent rates several vignettes the ratings of one person are
+correlated, and standard errors that assume independence are not valid.
+The error is largest for characteristics of the respondent, such as age or
+gender, which are constant within a respondent: there, ordinary standard
+errors are much too small (in the package's validation simulations,
+nominal 95 percent intervals covered the truth only about 80 percent of the
+time). For attributes varied within respondents they were close to right
+or somewhat too large. Cluster-robust standard errors are valid in both
+cases, so use \code{cluster}.
 }
 
 \examples{
 set.seed(123)
+# 50 respondents, each rating 3 vignettes
 n <- 150
 d <- data.frame(
+  id      = rep(1:50, each = 3),
   quality = rnorm(n),
   cost    = runif(n, 100, 1000)
 )
+taste <- rnorm(50, sd = 0.4)[d$id]   # respondent-specific shift
 d$rating <- 10 * plogis(0.6 * d$quality - 0.002 * (d$cost - 500) +
-                          rnorm(n, sd = 0.5))
+                          taste + rnorm(n, sd = 0.5))
 
-fit <- fs_betareg(rating ~ quality + cost, data = d, compute_me = FALSE)
+fit <- fs_betareg(rating ~ quality + cost, data = d, cluster = ~ id,
+                  compute_me = FALSE)
 fit
 summary(fit)
 }

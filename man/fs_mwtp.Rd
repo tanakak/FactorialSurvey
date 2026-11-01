@@ -15,7 +15,8 @@ fs_mwtp(
 )
 }
 \arguments{
-\item{object}{A fitted model: an \code{fs_betareg} object from \code{\link[=fs_betareg]{fs_betareg()}},
+\item{object}{A fitted model: an \code{fs_betareg} object from \code{\link[=fs_betareg]{fs_betareg()}}
+(whose cluster-robust covariance matrix, if any, is used),
 a \code{\link[betareg:betareg]{betareg::betareg()}} fit, or any model for which \code{\link[=coef]{coef()}} and \code{\link[=vcov]{vcov()}}
 return a named vector and a conformable matrix.}
 
@@ -85,8 +86,9 @@ the same as the ratio of average marginal effects on the response scale.
 }
 \examples{
 set.seed(123)
-n <- 200
+n <- 200   # 50 respondents x 4 vignettes
 d <- data.frame(
+  id      = rep(1:50, each = 4),
   quality = sample(0:1, n, replace = TRUE),
   speed   = rnorm(n),
   price   = runif(n, 100, 1000)
@@ -95,7 +97,7 @@ d$rating <- 10 * plogis(0.8 * d$quality + 0.3 * d$speed -
                           0.0015 * d$price + rnorm(n, sd = 0.5))
 
 fit <- fs_betareg(rating ~ quality + speed + price, data = d,
-                  compute_me = FALSE)
+                  cluster = ~ id, compute_me = FALSE)
 
 # All attributes at once
 fs_mwtp(fit, price = "price")

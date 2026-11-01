@@ -92,3 +92,17 @@ say <- function(verbose, ...) {
   }
   invisible(NULL)
 }
+
+#' Evaluate an expression, discarding anything it prints
+#'
+#' AlgDesign prints progress notes such as "No improvement over initial random
+#' design." with print(); they cannot be turned off and would bypass the
+#' package's own `verbose` argument.
+#' @param expr Expression to evaluate.
+#' @return The value of `expr`.
+#' @noRd
+quietly <- function(expr) {
+  value <- NULL
+  utils::capture.output(value <- expr)
+  value
+}

@@ -5,3 +5,6 @@
 .DS_Store
 .quarto
 _to_delete/
+inst/doc
+validation/validation_results_quick.csv
+FactorialSurvey_*.md

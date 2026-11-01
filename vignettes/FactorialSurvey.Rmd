@@ -1,0 +1,172 @@
+---
+title: "Getting started with FactorialSurvey"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with FactorialSurvey}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
+                      fig.height = 2.8, dpi = 96)
+```
+
+A factorial survey shows each respondent a few short descriptions --
+*vignettes* -- whose attributes are varied by design, and asks for a rating
+or a yes/no answer. Because the attributes are assigned experimentally, their
+effects can be estimated cleanly, and when one attribute is a cost, they can
+be expressed as willingness to pay.
+
+This vignette walks through the workflow with take-away lunch boxes as the
+example: designing the vignettes, deciding how many respondents are needed,
+and analysing real ratings.
+
+```{r setup}
+library(FactorialSurvey)
+```
+
+## 1. Design the vignettes
+
+List the attributes and their levels. Levels may be text or numbers; every
+level of every attribute will appear in the design.
+
+```{r design}
+attrs <- list(
+  main  = c("grilled fish", "teriyaki chicken", "tofu hamburger"),
+  side  = c("no", "yes"),
+  info  = c("no", "yes"),
+  price = c(700, 900, 1100, 1300)
+)
+
+design <- fs_defficient(attrs, n_vignettes = 16, n_blocks = 2,
+                        seed = 1, verbose = FALSE)
+design
+```
+
+The D-efficiency is reported relative to an orthogonal design of the same
+size, so 100 percent is the best attainable. `fs_efficiency()` computes the
+same measure for any design, including ones built elsewhere; pass the
+intended levels so that a level that never appears is caught.
+
+```{r efficiency}
+fs_efficiency(design)
+```
+
+Respondents are then given blocks and presentation orders that balance
+carryover, and the rows are turned into the text shown on screen.
+
+```{r assign}
+design <- fs_vignette_text(
+  design,
+  "A {{main}} lunch box, side dish: {{side}}, nutrition label: {{info}}, ",
+  column = "part1"
+)
+schedule <- fs_assign(design, n_respondents = 200, seed = 1)
+head(schedule[, c("respondent", "block", "position", "main", "price")])
+```
+
+`fs_export()` writes the design or schedule for a survey platform, for
+example as a Qualtrics Loop & Merge table.
+
+## 2. Decide how many respondents you need
+
+Before fielding, simulate the survey under plausible effects -- from a pilot
+or a similar study -- and see how often each effect would be detected and how
+precise the willingness to pay would be.
+
+```{r power}
+pw <- fs_power(
+  design, n_respondents = c(50, 150),
+  coef = c("(Intercept)" = 1, "mainteriyaki chicken" = 0.7,
+           "maintofu hamburger" = 0.1, sideyes = 0.3, infoyes = 0.15,
+           price = -0.0015),
+  formula = ~ main + side + info + price, price = "price",
+  n_sim = 50, seed = 1, verbose = FALSE
+)
+pw[pw$term %in% c("sideyes", "infoyes"), ]
+```
+
+A modest effect such as the nutrition label is easily missed with 50
+respondents. `mwtp_relative` is the half-width of the confidence interval as a share of
+the true value: 0.3 means roughly plus or minus 30 percent. Use more
+simulations (200 or more) for a final decision.
+
+## 3. Analyse the ratings
+
+The `bento` data hold real ratings of eight lunch-box vignettes by 48
+students, on a 0 to 10 purchase-intention scale.
+
+```{r data}
+head(bento)
+```
+
+`fs_betareg()` fits a beta regression, which respects the bounds of the
+rating scale. Each student rated eight vignettes, so the ratings of one
+person are correlated; `cluster` makes the standard errors robust to this.
+
+```{r fit}
+fit <- fs_betareg(rating ~ main + side + info + price, data = bento,
+                  cluster = ~ respondent, compute_me = FALSE)
+summary(fit)
+```
+
+## 4. Willingness to pay
+
+The marginal willingness to pay (MWTP) values each attribute in yen: the
+price change that would offset it.
+
+```{r mwtp}
+w <- fs_mwtp(fit, price = "price")
+w
+plot(w)
+```
+
+The expected willingness to pay (EWTP) values a whole lunch box -- a complete
+scenario -- rather than a single attribute.
+
+```{r ewtp}
+boxes <- data.frame(
+  main = c("grilled fish", "teriyaki chicken", "teriyaki chicken"),
+  side = c(0, 0, 1),
+  info = c(0, 0, 1),
+  row.names = c("Fish, plain", "Chicken, plain", "Chicken, full")
+)
+e <- fs_ewtp(fit, boxes, price = "price")
+e
+plot(e) + ggplot2::labs(x = "Expected willingness to pay (yen)")
+```
+
+## 5. Yes/no responses
+
+When respondents answer whether they would accept a scenario at the stated
+cost, `fs_logit()` takes the place of `fs_betareg()`, and `fs_mwtp()` and
+`fs_ewtp()` work in the same way. Simulated data illustrate it here.
+
+```{r logit}
+yesno <- fs_simulate_ratings(
+  design, n_respondents = 300,
+  coef = c("(Intercept)" = 2, "mainteriyaki chicken" = 0.7,
+           "maintofu hamburger" = 0.1, sideyes = 0.3, infoyes = 0.1,
+           price = -0.002),
+  formula = ~ main + side + info + price, response = "binary",
+  name = "buy", seed = 2
+)
+lfit <- fs_logit(buy ~ main + side + info + price, data = yesno,
+                 cluster = ~ respondent, compute_me = FALSE)
+fs_mwtp(lfit, price = "price")
+```
+
+## References
+
+Hanemann, W. M. (1984). Welfare evaluations in contingent valuation
+experiments with discrete responses. *American Journal of Agricultural
+Economics*, 66(3), 332--341.
+
+Kuhfeld, W. F., Tobias, R. D. and Garratt, M. (1994). Efficient experimental
+design with marketing research applications. *Journal of Marketing
+Research*, 31(4), 545--557.
+
+Tanaka, K. (2025). A unified framework for estimating willingness to pay
+using factorial survey experiments. SSRN Working Paper.
+<https://doi.org/10.2139/ssrn.5238343>

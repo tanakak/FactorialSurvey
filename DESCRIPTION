@@ -1,43 +1,50 @@
 Package: FactorialSurvey
 Type: Package
 Title: Design and Analysis of Factorial Survey (Vignette) Experiments
-Version: 0.2.0
+Version: 0.2.0.9000
 Authors@R: c(
-    person("Katsuya", "Tanaka", , "katsuyat@gmail.com", role = c("aut", "cre")))
+    person("Katsuya", "Tanaka", , "katsuyat@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-0455-0133")))
 Description: An integrated workflow for factorial survey (vignette) experiments.
-    Constructs D-efficient sets of vignettes from a factorial structure,
-    allocates them to blocks and to respondents in carryover-balanced orders,
-    renders them as prose, writes them out for survey platforms, estimates
-    models for bounded rating outcomes using beta regression, and derives
-    average marginal effects and marginal willingness to pay with delta-method
-    standard errors. Efficient designs and optimal blocking are obtained with
-    the exchange algorithms of Federov (1972, ISBN:0122507509) as implemented
-    in 'AlgDesign'. Presentation orders follow Williams (1949)
-    <doi:10.1071/CH9490149>. Beta regression follows Ferrari and Cribari-Neto
-    (2004) <doi:10.1080/0266476042000214501>. Bounded ratings are mapped to
-    the open unit interval following Smithson and Verkuilen (2006)
+    Constructs D-efficient sets of vignettes from a factorial structure and
+    reports their D- and A-efficiency following Kuhfeld, Tobias and Garratt
+    (1994) <doi:10.1177/002224379403100408>, allocates them to blocks and to
+    respondents in carryover-balanced orders, renders them as prose, and
+    writes them out for survey platforms. Simulates responses to evaluate
+    statistical power before fielding. Estimates beta regression models for
+    bounded ratings and logit models for yes/no responses, with standard
+    errors clustered by respondent, and derives average marginal effects,
+    marginal willingness to pay and the expected willingness to pay for
+    complete policy scenarios following Hanemann (1984) <doi:10.2307/1240800>.
+    Efficient designs and optimal blocking use the exchange algorithms of
+    Federov (1972, ISBN:0122507509) as implemented in 'AlgDesign'.
+    Presentation orders follow Williams (1949) <doi:10.1071/CH9490149>. Beta
+    regression follows Ferrari and Cribari-Neto (2004)
+    <doi:10.1080/0266476042000214501>. Bounded ratings are mapped to the open
+    unit interval following Smithson and Verkuilen (2006)
     <doi:10.1037/1082-989X.11.1.54>.
 License: MIT + file LICENSE
 Encoding: UTF-8
+LazyData: true
 Depends: R (>= 4.1)
 Imports:
     stats,
     tools,
     utils,
     AlgDesign,
-    betareg
+    betareg,
+    ggplot2 (>= 3.4.0),
+    sandwich
 Suggests:
     openxlsx,
     margins,
-    msm,
     testthat (>= 3.0.0),
     withr,
     knitr,
-    rmarkdown,
-    covr
+    rmarkdown
+VignetteBuilder: knitr
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
-URL: https://github.com/tanakak/FactorialSurvey,
-    https://tanakak.github.io/FactorialSurvey/
+URL: https://github.com/tanakak/FactorialSurvey
 BugReports: https://github.com/tanakak/FactorialSurvey/issues

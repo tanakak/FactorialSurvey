@@ -196,7 +196,8 @@ test_that("fs_design_eval accepts a plain data frame", {
   ev <- fs_design_eval(df)
 
   expect_s3_class(ev, "fs_design_eval")
-  expect_null(ev$d_efficiency)
+  expect_s3_class(ev$efficiency, "fs_efficiency")
+  expect_equal(ev$efficiency$d_efficiency, 100)
 })
 
 test_that("fs_design_eval rejects unusable input", {
@@ -209,4 +210,11 @@ test_that("print.fs_design_eval produces output", {
                      seed = 1, verbose = FALSE)
   expect_output(print(fs_design_eval(d)), "Level balance")
   expect_output(print(fs_design_eval(d)), "Attribute correlations")
+})
+
+test_that("fs_defficient prints nothing when verbose = FALSE", {
+  expect_silent(
+    fs_defficient(list(food = c("a", "b"), price = c(500, 700)), 4,
+                  n_blocks = 2, seed = 1, verbose = FALSE)
+  )
 })

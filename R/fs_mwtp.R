@@ -11,7 +11,8 @@
 #' interval methods are therefore offered, and it is worth comparing them
 #' before reporting a result.
 #'
-#' @param object A fitted model: an `fs_betareg` object from [fs_betareg()],
+#' @param object A fitted model: an `fs_betareg` object from [fs_betareg()]
+#'   (whose cluster-robust covariance matrix, if any, is used),
 #'   a [betareg::betareg()] fit, or any model for which [coef()] and [vcov()]
 #'   return a named vector and a conformable matrix.
 #' @param variable The name of the attribute coefficient, as it appears in
@@ -76,8 +77,9 @@
 #' @export
 #' @examples
 #' set.seed(123)
-#' n <- 200
+#' n <- 200   # 50 respondents x 4 vignettes
 #' d <- data.frame(
+#'   id      = rep(1:50, each = 4),
 #'   quality = sample(0:1, n, replace = TRUE),
 #'   speed   = rnorm(n),
 #'   price   = runif(n, 100, 1000)
@@ -86,7 +88,7 @@
 #'                           0.0015 * d$price + rnorm(n, sd = 0.5))
 #'
 #' fit <- fs_betareg(rating ~ quality + speed + price, data = d,
-#'                   compute_me = FALSE)
+#'                   cluster = ~ id, compute_me = FALSE)
 #'
 #' # All attributes at once
 #' fs_mwtp(fit, price = "price")
@@ -104,9 +106,6 @@ fs_mwtp <- function(object,
 
   method <- match.arg(method)
 
-  if (inherits(object, "fs_betareg")) {
-    object <- object$model
-  }
   if (missing(price) || !is.character(price) || length(price) != 1L) {
     stop("`price` must be the name of a single coefficient.", call. = FALSE)
   }
@@ -116,6 +115,8 @@ fs_mwtp <- function(object,
   }
   check_count(n_sim)
 
+  ## For an fs_betareg object, vcov() returns the matrix used for inference,
+  ## which is cluster-robust when the model was fitted with `cluster`.
   beta <- stats::coef(object)
   vc <- stats::vcov(object)
   if (is.null(names(beta))) {
@@ -313,9 +314,11 @@ rmvnorm_chol <- function(n, mu, sigma) {
 #' @export
 #' @examples
 #' set.seed(1)
-#' d <- data.frame(x = rnorm(120), price = runif(120, 100, 900))
+#' d <- data.frame(id = rep(1:40, each = 3), x = rnorm(120),
+#'                 price = runif(120, 100, 900))
 #' d$rating <- 10 * plogis(0.7 * d$x - 0.002 * d$price + rnorm(120, sd = 0.4))
-#' fit <- fs_betareg(rating ~ x + price, data = d, compute_me = FALSE)
+#' fit <- fs_betareg(rating ~ x + price, data = d, cluster = ~ id,
+#'                   compute_me = FALSE)
 #' print(fs_mwtp(fit, price = "price"))
 print.fs_mwtp <- function(x, digits = 4, ...) {
   label <- c(delta = "delta method",
@@ -353,9 +356,11 @@ print.fs_mwtp <- function(x, digits = 4, ...) {
 #' @export
 #' @examples
 #' set.seed(1)
-#' d <- data.frame(x = rnorm(120), price = runif(120, 100, 900))
+#' d <- data.frame(id = rep(1:40, each = 3), x = rnorm(120),
+#'                 price = runif(120, 100, 900))
 #' d$rating <- 10 * plogis(0.7 * d$x - 0.002 * d$price + rnorm(120, sd = 0.4))
-#' fit <- fs_betareg(rating ~ x + price, data = d, compute_me = FALSE)
+#' fit <- fs_betareg(rating ~ x + price, data = d, cluster = ~ id,
+#'                   compute_me = FALSE)
 #' as.data.frame(fs_mwtp(fit, price = "price"))
 as.data.frame.fs_mwtp <- function(x, row.names = NULL, optional = FALSE, ...) {
   x$estimates

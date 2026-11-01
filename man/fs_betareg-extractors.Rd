@@ -33,12 +33,15 @@ numeric vector for \code{fitted()}.
 \description{
 Methods that forward to the underlying \code{\link[betareg:betareg]{betareg::betareg()}} fit, so that
 \code{fs_betareg} objects can be used with the usual extractor functions.
+\code{vcov()} returns the covariance matrix used for inference, which is
+cluster-robust when the model was fitted with \code{cluster}.
 }
 \examples{
 set.seed(1)
-d <- data.frame(x = rnorm(60))
+d <- data.frame(id = rep(1:20, each = 3), x = rnorm(60))
 d$rating <- 10 * plogis(0.5 * d$x + rnorm(60, sd = 0.4))
-fit <- fs_betareg(rating ~ x, data = d, compute_me = FALSE)
+fit <- fs_betareg(rating ~ x, data = d, cluster = ~ id,
+               compute_me = FALSE)
 coef(fit)
 nobs(fit)
 }

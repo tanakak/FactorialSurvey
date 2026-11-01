@@ -4,7 +4,13 @@
 \alias{fs_design_eval}
 \title{Diagnostics for a factorial survey design}
 \usage{
-fs_design_eval(design, by_block = TRUE)
+fs_design_eval(
+  design,
+  by_block = TRUE,
+  factors = NULL,
+  model = NULL,
+  linear = NULL
+)
 }
 \arguments{
 \item{design}{An object of class \code{fs_design}, from \code{\link[=fs_defficient]{fs_defficient()}}, or a
@@ -12,6 +18,11 @@ plain data frame of attribute columns.}
 
 \item{by_block}{A logical value. If \code{TRUE}, level counts are reported
 separately for each block as well as overall.}
+
+\item{factors, model, linear}{Passed to \code{\link[=fs_efficiency]{fs_efficiency()}}. For an
+\code{fs_design} object they are taken from the object when left \code{NULL};
+for a plain data frame, supplying \code{factors} lets levels that never
+appear be detected.}
 }
 \value{
 An object of class \code{fs_design_eval}, a list with components:
@@ -23,7 +34,8 @@ An object of class \code{fs_design_eval}, a list with components:
 on their numeric codes.}
 \item{\code{max_abs_correlation}}{The largest absolute off-diagonal
 correlation.}
-\item{\code{d_efficiency}}{The D-efficiency of the design, when available.}
+\item{\code{efficiency}}{The result of \code{\link[=fs_efficiency]{fs_efficiency()}}: D- and
+A-efficiency in percent, estimability and missing levels.}
 \item{\code{n_vignettes}}{The number of vignettes.}
 }
 }

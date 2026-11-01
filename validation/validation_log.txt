@@ -1,0 +1,47 @@
+FactorialSurvey validation
+  package version : 0.2.0.9000 
+  R version       : R version 4.3.3 (2024-02-29) 
+  replications    : 400 
+
+A. Experimental design
+[PASS] A1    3^4 in 9 vignettes reaches 100% (an L9 orthogonal array)  -- reported 100.0%
+[PASS] A2    2^7 in 8 vignettes reaches 100% (an L8 orthogonal array)  -- reported 100.0%
+[PASS] A3    Numerically coded levels: every level appears (bug fixed)  -- main: 6/6/4  price: 4/4/4/4
+[PASS] A4    Reported D-efficiency equals an independent calculation  -- max |difference| over 20 designs: 5.7e-14
+[PASS] A5    fs_efficiency flags a design that drops a level  -- level a = 2 detected as missing; D-efficiency 0
+[PASS] A6    Restrictions are honoured  -- 7 of 9 combinations allowed
+[PASS] A7    Blocks are equal-sized and cover each vignette once  -- block sizes 4/4/4/4
+[PASS] A8    Williams orders: each vignette once per position, neighbours balanced  -- checked k = 3, 4, 5, 6, 8
+[PASS] A9    fs_assign deals blocks out evenly  -- 50 respondents per block, 4 vignettes each
+[PASS] A10   Export round-trips (CSV, Qualtrics, xlsx) with Japanese text  -- text and numbers identical after re-reading
+
+B. Estimation
+[PASS] B1    fs_betareg reproduces betareg on the transformed scale  -- coefficients identical
+[PASS] B2    Clustered covariance (betareg) equals a manual sandwich  -- SE ratio clustered / naive for price: 0.89
+[PASS] B3    fs_logit coefficients and clustered SE equal hand calculations  -- covariance matches B (sum_g s_g s_g') B x G/(G-1)
+[PASS] B4    fs_logit McFadden R2 and share correct match definitions  -- R2 = 0.114, correct = 68.2%
+
+C. Willingness to pay
+[PASS] C1    MWTP and delta-method SE equal hand calculations (bento)  -- chicken 469 yen, side 210 yen
+[PASS] C2    Fieller and Krinsky-Robb intervals bracket the estimate  -- chicken: Fieller [317, 661], KR [317, 664]
+[PASS] C3    EWTP equals the numerical integral of the acceptance curve  -- EWTP (yen): 536, 1083, 709
+[PASS] C4    EWTP delta-method SE equals a numerical-gradient calculation  -- SE = 101.53
+[PASS] C5    MWTP 95% CI coverage, ratings, clustered SE (beta regression)  -- clustered 0.968 vs naive 0.988; median MWTP 200.8 (true 200)
+[PASS] C6    MWTP 95% CI coverage, yes/no, clustered SE (logit)  -- clustered 0.953 vs naive 0.958; median MWTP 200.2 (true 200)
+[PASS] C7    EWTP 95% CI coverage (logit, no respondent effect)  -- coverage 0.945 (true EWTP 446.0)
+[PASS] C8    Respondent characteristic: clustered SE keep 95% coverage, naive SE do not  -- gender coverage: clustered 0.925, naive 0.790 | within-respondent attribute: clustered 0.945, naive 0.973
+
+D. Simulation and power
+[PASS] D1    Simulated ratings have the theoretical mean  -- mean difference 0.0034
+[PASS] D2    Simulated yes/no responses have the theoretical rate  -- rate difference -0.0010
+[PASS] D3    Size: a null effect is rejected at about 5%  -- rejection rate 0.070
+[PASS] D4    Power rises and MWTP precision improves with sample size  -- power 0.98 -> 1.00 -> 1.00; half-width 38 -> 21 -> 11
+
+E. Graphics and housekeeping
+[PASS] E1    plot() methods draw the estimates they are given  -- MWTP points match; all plots render
+[PASS] E2    Seeded functions leave the caller's RNG untouched
+[PASS] E3    Missing cluster triggers a warning; FALSE is silent
+
+==========================================================
+29 of 29 checks passed (6.9 minutes)
+Results written to validation/validation_results.csv 

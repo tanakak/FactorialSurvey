@@ -11,3 +11,6 @@
 ^CRAN-SUBMISSION$
 ^codecov\.yml$
 ^FactorialSurvey_.*\.md$
+^_to_delete$
+^data-raw$
+^validation$

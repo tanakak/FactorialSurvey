@@ -8,7 +8,10 @@
 #'
 #' @param factors A named list defining the attributes and their levels, in
 #'   the form accepted by [expand.grid()]. Each element may be numeric,
-#'   character or a factor.
+#'   character or a factor. Every attribute is treated as categorical during
+#'   the search, so that each of its levels appears in the design, even when
+#'   the levels are numbers such as `1:3` or `c(400, 600, 800)`; see
+#'   `linear` for the exception.
 #' @param n_vignettes The number of vignettes to select. Must not exceed the
 #'   number of distinct combinations, and must be at least the number of
 #'   parameters implied by `model`.
@@ -17,6 +20,13 @@
 #' @param model A one-sided formula giving the model the design should be
 #'   efficient for. The default `~ .` covers main effects only; use `~ .^2` to
 #'   make the design efficient for two-way interactions as well.
+#' @param linear An optional character vector naming numeric attributes for
+#'   which only a linear effect is to be estimated. The design is then made
+#'   efficient for a slope rather than for separate level effects, which
+#'   pushes the selection towards the extreme levels and may leave
+#'   intermediate levels out altogether. Leave it `NULL` (the default) unless
+#'   that is what you want: a price attribute that will enter the analysis as
+#'   a continuous variable is still best given all its levels in the design.
 #' @param restrictions An optional one-sided formula, or a list of such
 #'   formulas, describing combinations that must **not** appear. Each formula
 #'   is evaluated within the full factorial and rows for which it is `TRUE`
@@ -46,18 +56,31 @@
 #'   `block` column. The following attributes are attached:
 #'   \describe{
 #'     \item{`factors`}{The list of attributes and levels supplied.}
-#'     \item{`d_efficiency`}{The D-efficiency reported by
-#'       [AlgDesign::optFederov()], relative to a hypothetical orthogonal
-#'       design.}
-#'     \item{`d_criterion`}{The determinant-based criterion value.}
+#'     \item{`d_efficiency`}{The D-efficiency in percent, relative to a
+#'       hypothetical orthogonal design of the same size; see
+#'       [fs_efficiency()].}
+#'     \item{`a_efficiency`}{The A-efficiency in percent.}
+#'     \item{`linear`}{The attributes treated as linear.}
 #'     \item{`n_candidates`}{The number of candidate combinations searched.}
 #'     \item{`model`}{The model formula the design was optimised for.}
 #'     \item{`blocking`}{The blocking method used.}
-#'     \item{`block_criterion`}{The blocked D-criterion from
-#'       [AlgDesign::optBlock()], or `NA` for random or absent blocking.}
+#'     \item{`block_criterion`}{The raw blocked criterion from
+#'       [AlgDesign::optBlock()], or `NA` for random or absent blocking. It is
+#'       an internal search criterion, not an efficiency.}
 #'   }
 #'
 #' @details
+#' The search is carried out with every attribute coded as a factor, so the
+#' design is efficient for estimating a separate effect for each level. This
+#' matters when levels are supplied as numbers: treated as a continuous
+#' variable, a three-level attribute coded `1:3` would be optimised for a
+#' slope, and the middle level would rarely or never be shown. Attributes
+#' named in `linear` are the deliberate exception. In the returned design the
+#' columns keep the type of the levels supplied: numbers stay numbers.
+#'
+#' The reported D- and A-efficiencies follow Kuhfeld, Tobias and Garratt
+#' (1994) and equal 100 for an orthogonal array. See [fs_efficiency()].
+#'
 #' With `blocking = "optimal"` the selected vignettes are allocated to blocks
 #' by [AlgDesign::optBlock()], which searches for an allocation that keeps each
 #' block as informative as possible in its own right. This matters when a
@@ -73,13 +96,18 @@
 #' The function does not write files. Use [fs_export()] to write a design to
 #' disk in a form a survey platform will accept.
 #'
-#' @seealso [fs_design_eval()] for level balance and correlation diagnostics,
+#' @seealso [fs_efficiency()] for the efficiency of any design,
+#'   [fs_design_eval()] for level balance and correlation diagnostics,
 #'   [set_labels()] for attaching the wording shown to respondents,
 #'   [fs_vignette_text()] for turning rows into prose, [fs_assign()] for
 #'   allocating blocks and presentation orders to respondents.
 #'
 #' @references
 #' Federov, V. V. (1972). *Theory of Optimal Experiments*. Academic Press.
+#'
+#' Kuhfeld, W. F., Tobias, R. D. and Garratt, M. (1994). Efficient
+#' experimental design with marketing research applications. *Journal of
+#' Marketing Research*, 31(4), 545--557. \doi{10.1177/002224379403100408}
 #'
 #' @importFrom stats model.matrix update
 #' @export
@@ -104,6 +132,7 @@ fs_defficient <- function(factors,
                           n_vignettes,
                           n_blocks = 1,
                           model = ~ .,
+                          linear = NULL,
                           restrictions = NULL,
                           blocking = c("optimal", "random"),
                           n_repeats = 50,
@@ -113,16 +142,8 @@ fs_defficient <- function(factors,
                           verbose = TRUE) {
 
   ## ---- Input validation ---------------------------------------------------
-  if (!is.list(factors) || length(factors) == 0L) {
-    stop("`factors` must be a non-empty list.", call. = FALSE)
-  }
-  if (is.null(names(factors)) || any(names(factors) == "")) {
-    stop("Every element of `factors` must be named.", call. = FALSE)
-  }
-  if (any(vapply(factors, length, integer(1L)) < 2L)) {
-    stop("Every attribute in `factors` must have at least two levels.",
-         call. = FALSE)
-  }
+  check_factors(factors)
+  linear <- check_linear(linear, factors)
   blocking <- match.arg(blocking)
   check_count(n_vignettes)
   check_count(n_blocks)
@@ -168,7 +189,12 @@ fs_defficient <- function(factors,
          "combinations (", n_candidates, ").", call. = FALSE)
   }
 
-  n_par <- ncol(stats::model.matrix(model, data = candidates))
+  ## The search works on factor-coded attributes so that every level of a
+  ## numerically coded attribute is treated as a separate category.
+  search_data <- as_search_data(candidates, factors, linear)
+  rownames(search_data) <- NULL
+
+  n_par <- ncol(stats::model.matrix(model, data = search_data))
   if (n_vignettes < n_par) {
     stop("`n_vignettes` (", n_vignettes, ") is smaller than the number of ",
          "parameters implied by `model` (", n_par, "). The design would not ",
@@ -179,17 +205,21 @@ fs_defficient <- function(factors,
   say(verbose, "Searching for ", n_vignettes,
       " vignettes by the D-efficiency criterion ...")
 
-  search <- AlgDesign::optFederov(
+  search <- quietly(AlgDesign::optFederov(
     frml      = model,
-    data      = candidates,
+    data      = search_data,
     nTrials   = n_vignettes,
     criterion = "D",
     nRepeats  = n_repeats
-  )
-  design <- as.data.frame(search$design)
+  ))
+  design <- search_data[search$rows, , drop = FALSE]
   rownames(design) <- NULL
 
-  say(verbose, "D-efficiency: ", round(search$Dea, 4))
+  eff <- efficiency_from_matrix(
+    orthonormal_model_matrix(design, factors, model, linear)
+  )
+  say(verbose, "D-efficiency: ", fmt_pct(eff$d),
+      " (A-efficiency: ", fmt_pct(eff$a), ")")
 
   ## ---- Blocking -----------------------------------------------------------
   block_criterion <- NA_real_
@@ -206,7 +236,6 @@ fs_defficient <- function(factors,
       } else {
         design <- blocked$design
         block_criterion <- blocked$criterion
-        say(verbose, "Blocked D-criterion: ", round(block_criterion, 4))
       }
     }
     if (blocking_used == "random") {
@@ -227,11 +256,23 @@ fs_defficient <- function(factors,
     design <- do.call(rbind, parts)
   }
   rownames(design) <- NULL
+  design <- restore_types(design, factors)
+
+  missing <- vapply(setdiff(names(factors), linear), function(v) {
+    length(setdiff(as.character(factors[[v]]), as.character(design[[v]])))
+  }, integer(1L))
+  if (any(missing > 0L)) {
+    warning("Some levels do not appear in the design (",
+            paste(names(missing)[missing > 0L], collapse = ", "),
+            "). Increase `n_vignettes` or relax the restrictions.",
+            call. = FALSE)
+  }
 
   ## ---- Assemble -----------------------------------------------------------
   attr(design, "factors")         <- factors
-  attr(design, "d_efficiency")    <- search$Dea
-  attr(design, "d_criterion")     <- search$D
+  attr(design, "d_efficiency")    <- eff$d
+  attr(design, "a_efficiency")    <- eff$a
+  attr(design, "linear")          <- linear
   attr(design, "n_candidates")    <- n_candidates
   attr(design, "model")           <- model
   attr(design, "blocking")        <- blocking_used
@@ -257,14 +298,14 @@ try_opt_block <- function(design, model, n_blocks, n_repeats) {
   sizes <- rep(nrow(design) / n_blocks, n_blocks)
 
   blocked <- tryCatch(
-    suppressWarnings(
+    suppressWarnings(quietly(
       AlgDesign::optBlock(
         frml       = model,
         withinData = design,
         blocksizes = sizes,
         nRepeats   = n_repeats
       )
-    ),
+    )),
     error = function(e) NULL
   )
   if (is.null(blocked) || is.null(blocked$Blocks)) {
@@ -349,13 +390,25 @@ apply_restrictions <- function(candidates, restrictions, verbose = FALSE) {
 #'                    seed = 1, verbose = FALSE)
 #' print(d)
 print.fs_design <- function(x, n = 10L, ...) {
+  if (is.null(attr(x, "factors")) || is.null(attr(x, "d_efficiency")) ||
+      !"block" %in% names(x)) {
+    print(as.data.frame(x))
+    return(invisible(x))
+  }
   cat("Factorial survey design\n")
   cat("  Vignettes    :", nrow(x), "\n")
   cat("  Blocks       :", length(unique(x$block)),
       paste0("(", attr(x, "blocking"), ")"), "\n")
   cat("  Attributes   :", length(attr(x, "factors")), "\n")
   cat("  Candidates   :", attr(x, "n_candidates"), "\n")
-  cat("  D-efficiency :", fmt(attr(x, "d_efficiency")), "\n\n")
+  cat("  D-efficiency :", fmt_pct(attr(x, "d_efficiency")), "\n")
+  if (!is.null(attr(x, "a_efficiency"))) {
+    cat("  A-efficiency :", fmt_pct(attr(x, "a_efficiency")), "\n")
+  }
+  if (length(attr(x, "linear")) > 0L) {
+    cat("  Linear       :", paste(attr(x, "linear"), collapse = ", "), "\n")
+  }
+  cat("\n")
 
   body <- as.data.frame(x)
   n <- min(n, nrow(body))
@@ -380,6 +433,10 @@ print.fs_design <- function(x, n = 10L, ...) {
 #'   plain data frame of attribute columns.
 #' @param by_block A logical value. If `TRUE`, level counts are reported
 #'   separately for each block as well as overall.
+#' @param factors,model,linear Passed to [fs_efficiency()]. For an
+#'   `fs_design` object they are taken from the object when left `NULL`;
+#'   for a plain data frame, supplying `factors` lets levels that never
+#'   appear be detected.
 #'
 #' @return An object of class `fs_design_eval`, a list with components:
 #'   \describe{
@@ -390,7 +447,8 @@ print.fs_design <- function(x, n = 10L, ...) {
 #'       on their numeric codes.}
 #'     \item{`max_abs_correlation`}{The largest absolute off-diagonal
 #'       correlation.}
-#'     \item{`d_efficiency`}{The D-efficiency of the design, when available.}
+#'     \item{`efficiency`}{The result of [fs_efficiency()]: D- and
+#'       A-efficiency in percent, estimability and missing levels.}
 #'     \item{`n_vignettes`}{The number of vignettes.}
 #'   }
 #'
@@ -405,7 +463,8 @@ print.fs_design <- function(x, n = 10L, ...) {
 #'                    n_vignettes = 12, n_blocks = 2,
 #'                    seed = 7, verbose = FALSE)
 #' fs_design_eval(d)
-fs_design_eval <- function(design, by_block = TRUE) {
+fs_design_eval <- function(design, by_block = TRUE, factors = NULL,
+                           model = NULL, linear = NULL) {
   if (!is.data.frame(design)) {
     stop("`design` must be a data frame or an `fs_design` object.",
          call. = FALSE)
@@ -440,12 +499,19 @@ fs_design_eval <- function(design, by_block = TRUE) {
   diag(off_diag) <- NA_real_
   max_abs <- if (all(is.na(off_diag))) 0 else max(abs(off_diag), na.rm = TRUE)
 
+  if (is.null(model)) {
+    model <- attr(design, "model")
+    if (is.null(model)) model <- ~ .
+  }
+  efficiency <- fs_efficiency(design, factors = factors, model = model,
+                              linear = linear)
+
   out <- list(
     balance             = balance,
     balance_by_block    = balance_by_block,
     correlation         = correlation,
     max_abs_correlation = max_abs,
-    d_efficiency        = attr(design, "d_efficiency"),
+    efficiency          = efficiency,
     n_vignettes         = nrow(body)
   )
   class(out) <- "fs_design_eval"
@@ -468,8 +534,19 @@ fs_design_eval <- function(design, by_block = TRUE) {
 print.fs_design_eval <- function(x, digits = 3, ...) {
   cat("Design diagnostics\n")
   cat("  Vignettes    :", x$n_vignettes, "\n")
-  if (!is.null(x$d_efficiency)) {
-    cat("  D-efficiency :", fmt(x$d_efficiency), "\n")
+  e <- x$efficiency
+  if (!is.null(e)) {
+    cat("  D-efficiency :", fmt_pct(e$d_efficiency), "\n")
+    cat("  A-efficiency :", fmt_pct(e$a_efficiency), "\n")
+    if (!e$estimable) {
+      cat("  Note: the design cannot estimate every parameter of the model.\n")
+    }
+    if (length(e$missing_levels) > 0L) {
+      cat("  Levels that never appear:",
+          paste(vapply(names(e$missing_levels), function(v) {
+            paste0(v, " (", paste(e$missing_levels[[v]], collapse = ", "), ")")
+          }, character(1L)), collapse = "; "), "\n")
+    }
   }
   cat("\nLevel balance\n")
   for (nm in names(x$balance)) {

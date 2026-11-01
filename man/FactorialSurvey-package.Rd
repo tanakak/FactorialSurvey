@@ -32,11 +32,12 @@ confidence interval.
 \section{A note on standard errors}{
 
 In a typical factorial survey each respondent rates several vignettes, so
-observations are clustered within respondents. The models fitted by
-\code{\link[=fs_betareg]{fs_betareg()}} treat observations as independent, which understates
-standard errors. Cluster-robust covariance and mixed-effects estimation are
-planned for a future release; until then, treat the reported uncertainty of
-clustered designs as optimistic.
+observations are clustered within respondents. Pass the respondent
+identifier to \code{\link[=fs_betareg]{fs_betareg()}} through its \code{cluster} argument: standard
+errors, marginal effects and willingness-to-pay intervals are then
+cluster-robust. Without it, ratings are treated as independent and the
+reported uncertainty is not valid; it is much too small for the effects of
+respondent characteristics such as age or gender.
 }
 
 \references{
@@ -57,13 +58,12 @@ Wallander, L. (2009). 25 years of factorial surveys in sociology: A review.
 Useful links:
 \itemize{
   \item \url{https://github.com/tanakak/FactorialSurvey}
-  \item \url{https://tanakak.github.io/FactorialSurvey/}
   \item Report bugs at \url{https://github.com/tanakak/FactorialSurvey/issues}
 }
 
 }
 \author{
-\strong{Maintainer}: Katsuya Tanaka \email{katsuyat@gmail.com}
+\strong{Maintainer}: Katsuya Tanaka \email{katsuyat@gmail.com} (\href{https://orcid.org/0000-0003-0455-0133}{ORCID})
 
 }
 \keyword{internal}

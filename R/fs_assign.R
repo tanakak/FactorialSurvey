@@ -246,13 +246,20 @@ fs_assign <- function(design,
 #' print(fs_assign(d, n_respondents = 4, seed = 1))
 print.fs_assignment <- function(x, n = 10L, ...) {
   body <- as.data.frame(x)
+  ## Subsetting with `[` keeps the class but drops the metadata and possibly
+  ## the columns summarised below; print such objects as plain data frames.
+  if (is.null(attr(x, "order")) ||
+      !all(c("respondent", "block", "vignette", "position") %in% names(body))) {
+    print(body)
+    return(invisible(x))
+  }
   cat("Respondent schedule\n")
   cat("  Respondents :", length(unique(body$respondent)), "\n")
   cat("  Blocks      :", length(unique(body$block)), "\n")
   cat("  Vignettes   :", length(unique(body$vignette)),
       "(", max(body$position), "per respondent )\n")
   cat("  Ordering    :", attr(x, "order"),
-      if (!is.na(attr(x, "n_orders"))) {
+      if (isTRUE(!is.na(attr(x, "n_orders")))) {
         paste0("(", attr(x, "n_orders"), " distinct orders)")
       } else {
         ""

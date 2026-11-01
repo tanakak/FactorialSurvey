@@ -180,3 +180,13 @@ test_that("print.fs_assignment produces output", {
   expect_output(print(s), "Respondent schedule")
   expect_output(print(s, n = 2), "more row")
 })
+
+test_that("subsets of schedules and designs still print", {
+  d <- fs_defficient(list(a = c("x", "y"), b = 1:3), n_vignettes = 6,
+                     n_blocks = 2, seed = 1, verbose = FALSE)
+  s <- suppressMessages(fs_assign(d, 4, seed = 1))
+  expect_output(print(s[, c("respondent", "a")]), "respondent")
+  expect_output(print(s[1:2, ]), "a")
+  expect_output(print(d[, c("a", "b")]), "a")
+  expect_output(print(d[1:2, ]), "a")
+})

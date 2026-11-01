@@ -1,3 +1,96 @@
+# FactorialSurvey (development version)
+
+## Bug fixes
+
+* `fs_defficient()` produced wrong designs when attribute levels were given
+  as numbers, such as `1:3` or `c(400, 600, 800)`. Numeric levels were passed
+  to the search as a continuous variable, so the design was optimised for a
+  linear slope and intermediate levels were rarely or never selected: with
+  three-level attributes the middle level could disappear altogether, leaving
+  its effect impossible to estimate. Every attribute is now treated as
+  categorical during the search. The returned columns keep the type of the
+  levels supplied.
+
+* The D-efficiency reported by `fs_defficient()` was not a D-efficiency.
+  Version 0.1.0 printed the criterion `D` of `AlgDesign::optFederov()`, which
+  is computed on treatment-coded dummies and is about 0.2 to 0.3 even for an
+  orthogonal array; version 0.2.0 reported `Dea`, a lower bound that applies
+  to approximate designs. Both are replaced by the D-efficiency of Kuhfeld,
+  Tobias and Garratt (1994), in percent, which equals 100 for an orthogonal
+  array. The A-efficiency is reported alongside it. The `d_criterion`
+  attribute has been removed.
+
+* `fs_mwtp()` ignored any covariance matrix attached to an `fs_betareg`
+  object and always used the model-based one. It now uses `vcov(object)`.
+
+* `fs_defficient()` printed AlgDesign's progress notes, such as "No
+  improvement over initial random design.", even with `verbose = FALSE`.
+  They are now discarded.
+
+* Printing a subset of an `fs_assignment` or `fs_design` object, such as
+  `schedule[, c("respondent", "price")]`, failed with an error. Such subsets
+  now print as plain data frames.
+
+* `fs_betareg()` no longer passes on the warning from `betareg` that no valid
+  starting value for the precision parameter was found. It is common with
+  ratings piled up at the ends of the scale and does not affect the
+  estimates.
+
+## New features
+
+* `fs_betareg()` gains `cluster`, for cluster-robust standard errors when
+  each respondent rates several vignettes (`cluster = ~ id`). The clustered
+  covariance matrix, from `sandwich::vcovCL()`, is used by `summary()`,
+  `vcov()`, the average marginal effects and `fs_mwtp()`. Leaving `cluster`
+  unspecified now issues a warning, because ordinary standard errors are not
+  valid in this setting; they are much too small for the effects of
+  respondent characteristics such as age or gender.
+  `cluster = FALSE` treats ratings as independent without the warning.
+  `sandwich` is a new import (it is already a dependency of `betareg`).
+
+* `fs_ewtp()` computes the expected willingness to pay for complete policy
+  scenarios, E(WTP) = ln(1 + exp(x'b)) / gamma (Hanemann 1984;
+  Tanaka 2025), with delta-method or Krinsky-Robb intervals. It accepts
+  `fs_logit()` and `fs_betareg()` fits as well as logit-link `glm` and
+  `betareg` models, and can average over rows to give a sample mean of
+  individual EWTP.
+
+* `fs_logit()` fits a binary logit model to yes/no responses, with
+  cluster-robust standard errors, McFadden's pseudo R-squared and the share
+  correctly predicted. `fs_mwtp()` and `fs_ewtp()` accept its fits.
+
+* `fs_simulate_ratings()` generates ratings or yes/no responses to a design
+  from coefficients you choose, with a respondent-specific shift, for
+  checking analyses, teaching and power calculations.
+
+* `plot()` methods for `fs_mwtp`, `fs_ewtp`, `fs_betareg` and `fs_logit`
+  objects draw forest plots of willingness to pay, marginal effects or
+  coefficients, and return `ggplot` objects that can be modified with `+`.
+  `theme_fs()` exposes the theme they use. `ggplot2` is a new import.
+
+* `fs_power()` estimates, by simulation, the power to detect each attribute
+  effect and the precision of marginal willingness to pay for several sample
+  sizes, analysing each simulated survey with clustered standard errors as
+  the real data would be. `plot()` draws the power curves.
+
+* New dataset `bento`: ratings of eight take-away lunch box vignettes by 48
+  students, used in the examples and the new vignette.
+
+* New vignette, `vignette("FactorialSurvey")`, walking through design, power,
+  estimation and willingness to pay.
+
+* `fs_efficiency()` computes the D- and A-efficiency of any design, including
+  one built outside the package, and lists levels that never appear. Use it
+  to check designs fielded in earlier surveys.
+
+* `fs_defficient()` gains `linear`, for numeric attributes where only a slope
+  is wanted. This reproduces the old behaviour deliberately, for the
+  attributes named.
+
+* `fs_design_eval()` reports the D- and A-efficiency and any missing levels,
+  and gains `factors`, `model` and `linear` arguments.
+
+
 # FactorialSurvey 0.2.0
 
 The design side of the workflow is now complete: a design can be built,
@@ -126,7 +219,7 @@ the unreleased development code.
 ## Other changes
 
 * The `margins` and `msm` packages moved from `Imports` to `Suggests`.
-  `margins` has not been updated since 2017 and is used conditionally;
+  `margins` is used conditionally;
   `msm::deltamethod` was replaced by a direct calculation of the gradient,
   which removes the dependency altogether.
 

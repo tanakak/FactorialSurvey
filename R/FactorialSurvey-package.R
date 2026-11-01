@@ -26,11 +26,12 @@
 #'
 #' @section A note on standard errors:
 #' In a typical factorial survey each respondent rates several vignettes, so
-#' observations are clustered within respondents. The models fitted by
-#' [fs_betareg()] treat observations as independent, which understates
-#' standard errors. Cluster-robust covariance and mixed-effects estimation are
-#' planned for a future release; until then, treat the reported uncertainty of
-#' clustered designs as optimistic.
+#' observations are clustered within respondents. Pass the respondent
+#' identifier to [fs_betareg()] through its `cluster` argument: standard
+#' errors, marginal effects and willingness-to-pay intervals are then
+#' cluster-robust. Without it, ratings are treated as independent and the
+#' reported uncertainty is not valid; it is much too small for the effects of
+#' respondent characteristics such as age or gender.
 #'
 #' @references
 #' Ferrari, S. L. P. and Cribari-Neto, F. (2004). Beta regression for
@@ -46,5 +47,6 @@
 #' *Social Science Research*, 38(3), 505--520.
 #' \doi{10.1016/j.ssresearch.2009.03.004}
 #'
+#' @importFrom ggplot2 .data
 #' @keywords internal
 "_PACKAGE"

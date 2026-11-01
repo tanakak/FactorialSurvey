@@ -9,12 +9,16 @@ An integrated workflow for **factorial survey (vignette) experiments** in R.
 
 A factorial survey shows respondents short descriptions whose attributes are
 experimentally varied, and asks for a rating -- typically on a bounded scale
-such as 0 to 10. Because the attributes are randomised by design, their
+such as 0 to 10 -- or a yes/no answer. Because the attributes are randomised by design, their
 effects on the rating carry a causal interpretation. `FactorialSurvey` covers
 the stages of such a study in one place: building an efficient set of
-vignettes, estimating a model suited to bounded ratings, and translating the
-estimates into quantities that can be reported, including marginal
-willingness to pay.
+vignettes, checking how many respondents are needed, estimating a model suited
+to bounded ratings or yes/no answers with standard errors clustered by
+respondent, and translating the estimates into quantities that can be
+reported: marginal willingness to pay for each attribute and expected
+willingness to pay for complete policy scenarios.
+
+See `vignette("FactorialSurvey")` for a walk-through with real data.
 
 ## Installation
 
@@ -66,13 +70,18 @@ design <- fs_defficient(
 
 ### 2. Check the design
 
-`fs_design_eval()` reports how evenly the levels appear and how strongly the
-attributes are correlated. Large correlations mean the effects involved will
-be hard to separate.
+`fs_design_eval()` reports the D- and A-efficiency (100 percent for an
+orthogonal array), how evenly the levels appear and how strongly the
+attributes are correlated. `fs_efficiency()` gives the efficiency of any
+design, including one built elsewhere.
 
 ```r
 fs_design_eval(design)
 ```
+
+Before fielding, `fs_power()` simulates the survey under effects you expect
+and reports how often each would be detected, and how precise willingness to
+pay would be, for several sample sizes.
 
 `set_labels()` attaches the wording the respondent will actually see:
 
@@ -124,21 +133,33 @@ an unbounded normal error.
 
 ```r
 fit <- fs_betareg(rating ~ damage + distance + cost,
-                  data  = survey_data,
-                  scale = c(0, 10))
+                  data    = survey_data,
+                  scale   = c(0, 10),
+                  cluster = ~ respondent_id)
 
 summary(fit)
 ```
+
+Because each respondent rates several vignettes, the ratings of one person
+are not independent. `cluster` makes standard errors, marginal effects and
+willingness-to-pay intervals robust to this; without it `fs_betareg()` warns.
 
 Average marginal effects are reported both on the unit interval and rescaled
 back onto the original 0--10 scale, so they can be read as "this attribute
 moves the rating by so many points".
 
-### 5. Marginal willingness to pay
+### 5. Willingness to pay
 
 ```r
-fs_mwtp(fit, price = "cost")
+w <- fs_mwtp(fit, price = "cost")
+plot(w)
 fs_mwtp(fit, price = "cost", method = "krinsky-robb", seed = 1)
+
+# Expected willingness to pay for complete scenarios
+scenarios <- data.frame(damage   = c("minor", "severe"),
+                        distance = c("far", "near"),
+                        row.names = c("mild", "serious"))
+fs_ewtp(fit, scenarios, price = "cost")
 ```
 
 MWTP is a ratio of coefficients, so its sampling distribution is skewed. Three
@@ -149,21 +170,22 @@ Fieller's theorem -- and it is worth comparing them before reporting a result.
 
 | Stage | Functions |
 |---|---|
-| Design | `fs_defficient()`, `fs_design_eval()` |
+| Design | `fs_defficient()`, `fs_efficiency()`, `fs_design_eval()` |
+| Planning | `fs_simulate_ratings()`, `fs_power()` |
 | Fielding | `set_labels()`, `fs_vignette_text()`, `fs_williams()`, `fs_assign()`, `fs_export()` |
-| Estimation | `fs_betareg()` |
-| Post-estimation | `fs_mwtp()` |
+| Estimation | `fs_betareg()` (ratings), `fs_logit()` (yes/no) |
+| Willingness to pay | `fs_mwtp()`, `fs_ewtp()` |
+| Graphics | `plot()` methods, `theme_fs()` |
+| Data | `bento` |
 
 ## Roadmap
 
-This is version 0.2.0. Planned for future releases:
+Planned for future releases:
 
 - ordered beta regression for ratings that pile up at the endpoints
-- cluster-robust standard errors for respondents who rate several vignettes
 - respondent-level heterogeneity: multilevel, random-parameter and
   finite-mixture models
-- plotting methods for effects, willingness to pay and heterogeneity
-- scenario prediction, simulation and welfare calculation
+- scenario prediction and welfare calculation
 
 ## Related packages
 
