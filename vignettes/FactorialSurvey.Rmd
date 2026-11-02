@@ -123,7 +123,9 @@ plot(w)
 ```
 
 The expected willingness to pay (EWTP) values a whole lunch box -- a complete
-scenario -- rather than a single attribute.
+scenario -- rather than a single attribute. It is the mean of willingness to
+pay truncated at zero (Hanemann 1989), applied to complete scenarios as in
+Tanaka et al. (2027).
 
 ```{r ewtp}
 boxes <- data.frame(
@@ -159,9 +161,9 @@ fs_mwtp(lfit, price = "price")
 
 ## References
 
-Hanemann, W. M. (1984). Welfare evaluations in contingent valuation
-experiments with discrete responses. *American Journal of Agricultural
-Economics*, 66(3), 332--341.
+Hanemann, W. M. (1989). Welfare evaluations in contingent valuation
+experiments with discrete response data: Reply. *American Journal of
+Agricultural Economics*, 71(4), 1057--1061.
 
 Kuhfeld, W. F., Tobias, R. D. and Garratt, M. (1994). Efficient experimental
 design with marketing research applications. *Journal of Marketing
@@ -170,3 +172,8 @@ Research*, 31(4), 545--557.
 Tanaka, K. (2025). A unified framework for estimating willingness to pay
 using factorial survey experiments. SSRN Working Paper.
 <https://doi.org/10.2139/ssrn.5238343>
+
+Tanaka, K., Dill, J., McNeil, N., Geller, R. and Kondo, N. (2027). What are
+safer streets worth? Bridging resident preferences and policy design in
+traffic calming. *Transportation Research Part A*, 215, 105293.
+<https://doi.org/10.1016/j.tra.2026.105293>

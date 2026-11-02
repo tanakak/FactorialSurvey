@@ -15,7 +15,10 @@ Description: An integrated workflow for factorial survey (vignette) experiments.
     bounded ratings and logit models for yes/no responses, with standard
     errors clustered by respondent, and derives average marginal effects,
     marginal willingness to pay and the expected willingness to pay for
-    complete policy scenarios following Hanemann (1984) <doi:10.2307/1240800>.
+    complete policy scenarios. The latter is the mean of willingness to pay
+    truncated at zero, Hanemann (1989) <doi:10.2307/1242685>, applied to
+    factorial surveys as in Tanaka et al. (2027)
+    <doi:10.1016/j.tra.2026.105293>.
     Efficient designs and optimal blocking use the exchange algorithms of
     Fedorov (1972, ISBN:0122507509) as implemented in 'AlgDesign'.
     Presentation orders follow Williams (1949) <doi:10.1071/CH9490149>. Beta

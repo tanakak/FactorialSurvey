@@ -49,8 +49,10 @@
   `sandwich` is a new import (it is already a dependency of `betareg`).
 
 * `fs_ewtp()` computes the expected willingness to pay for complete policy
-  scenarios, E(WTP) = ln(1 + exp(x'b)) / gamma (Hanemann 1984;
-  Tanaka 2025), with delta-method or Krinsky-Robb intervals. It accepts
+  scenarios, E(WTP) = ln(1 + exp(x'b)) / gamma, the mean of willingness to
+  pay truncated at zero (Hanemann 1989) as applied to factorial surveys by
+  Tanaka (2025) and Tanaka et al. (2027), with delta-method or Krinsky-Robb
+  intervals. It accepts
   `fs_logit()` and `fs_betareg()` fits as well as logit-link `glm` and
   `betareg` models, and can average over rows to give a sample mean of
   individual EWTP.

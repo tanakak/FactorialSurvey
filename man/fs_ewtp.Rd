@@ -73,13 +73,16 @@ Write the model's linear predictor for a scenario \eqn{x} offered at cost
 \eqn{R} as \eqn{x'\beta - \gamma R}, where \eqn{\gamma > 0} is minus the
 price coefficient. With a logit link the probability of support (for
 \code{\link[=fs_logit]{fs_logit()}}) or the expected rating on the unit interval (for
-\code{\link[=fs_betareg]{fs_betareg()}}) is \eqn{\Lambda(x'\beta - \gamma R)}. Treating this as the
-probability that willingness to pay exceeds \eqn{R}, and willingness to pay
-as non-negative, the expected willingness to pay is
+\code{\link[=fs_betareg]{fs_betareg()}}) is \eqn{\Lambda(x'\beta - \gamma R)}. Treating this, as in
+the utility-difference model of Hanemann (1984), as the probability that
+willingness to pay exceeds \eqn{R}, and willingness to pay as
+non-negative, the expected willingness to pay is
 \deqn{E(\mathrm{WTP}) = \int_0^\infty \Lambda(x'\beta - \gamma R)\, dR =
   \frac{1}{\gamma} \ln\{1 + \exp(x'\beta)\},}
-the closed form of Hanemann (1984) used by Tanaka (2025) and Tanaka et al.
-(2027, Eq. 6). It is expressed in the units of the price variable.
+the mean of the distribution truncated at zero (Hanemann 1989). Tanaka
+(2025) and Tanaka et al. (2027, Eq. 6) apply it to complete policy
+scenarios in factorial surveys, including ratings analysed by beta
+regression. It is expressed in the units of the price variable.
 
 The intercept and every attribute enter \eqn{x'\beta}, so EWTP depends on
 the full scenario, not only on differences between scenarios, and it is
@@ -117,6 +120,10 @@ fs_ewtp(fit, scenarios, price = "cost")
 Hanemann, W. M. (1984). Welfare evaluations in contingent valuation
 experiments with discrete responses. \emph{American Journal of Agricultural
 Economics}, 66(3), 332--341. \doi{10.2307/1240800}
+
+Hanemann, W. M. (1989). Welfare evaluations in contingent valuation
+experiments with discrete response data: Reply. \emph{American Journal of
+Agricultural Economics}, 71(4), 1057--1061. \doi{10.2307/1242685}
 
 Tanaka, K. (2025). A unified framework for estimating willingness to pay
 using factorial survey experiments. SSRN Working Paper.
