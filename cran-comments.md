@@ -10,13 +10,21 @@ This is a new submission.
 - local: Ubuntu 24.04, R 4.3.3
 - GitHub Actions: ubuntu-latest (devel, release, oldrel-1), macos-latest
   (release), windows-latest (release)
-- win-builder: R-devel (to be run before submission)
+- win-builder: R-devel (2026-11-01 r90825 ucrt)
 
 ## R CMD check results
 
 0 errors | 0 warnings | 1 note
 
 > New submission
+>
+> Possibly misspelled words in DESCRIPTION:
+>   Cribari, Fedorov, Garratt, Hanemann, Kuhfeld, Neto, Tanaka, Tobias,
+>   Verkuilen, al, et
+
+This is a new submission. The words flagged as possibly misspelled are the
+surnames of cited authors (Cribari-Neto, Fedorov, Garratt, Hanemann,
+Kuhfeld, Tanaka, Tobias, Verkuilen) and "et al.".
 
 ## Notes for the reviewers
 
