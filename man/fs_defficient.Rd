@@ -147,7 +147,7 @@ d2 <- fs_defficient(attrs, n_vignettes = 9,
 any(d2$damage == "minor" & d2$cost == 1000)
 }
 \references{
-Federov, V. V. (1972). \emph{Theory of Optimal Experiments}. Academic Press.
+Fedorov, V. V. (1972). \emph{Theory of Optimal Experiments}. Academic Press.
 
 Kuhfeld, W. F., Tobias, R. D. and Garratt, M. (1994). Efficient
 experimental design with marketing research applications. \emph{Journal of

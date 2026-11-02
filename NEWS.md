@@ -90,6 +90,15 @@
 * `fs_design_eval()` reports the D- and A-efficiency and any missing levels,
   and gains `factors`, `model` and `linear` arguments.
 
+## Documentation
+
+* The author of *Theory of Optimal Experiments* (1972), on which the exchange
+  algorithm in 'AlgDesign' is based, is now spelt correctly as Fedorov.
+  The 'AlgDesign' function keeps its own name, `optFederov()`.
+
+* DESCRIPTION declares `Language: en-GB`, matching the British spelling used
+  throughout the documentation.
+
 
 # FactorialSurvey 0.2.0
 

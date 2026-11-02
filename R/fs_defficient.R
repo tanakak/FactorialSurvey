@@ -103,7 +103,7 @@
 #'   allocating blocks and presentation orders to respondents.
 #'
 #' @references
-#' Federov, V. V. (1972). *Theory of Optimal Experiments*. Academic Press.
+#' Fedorov, V. V. (1972). *Theory of Optimal Experiments*. Academic Press.
 #'
 #' Kuhfeld, W. F., Tobias, R. D. and Garratt, M. (1994). Efficient
 #' experimental design with marketing research applications. *Journal of

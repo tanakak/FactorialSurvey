@@ -17,7 +17,7 @@ Description: An integrated workflow for factorial survey (vignette) experiments.
     marginal willingness to pay and the expected willingness to pay for
     complete policy scenarios following Hanemann (1984) <doi:10.2307/1240800>.
     Efficient designs and optimal blocking use the exchange algorithms of
-    Federov (1972, ISBN:0122507509) as implemented in 'AlgDesign'.
+    Fedorov (1972, ISBN:0122507509) as implemented in 'AlgDesign'.
     Presentation orders follow Williams (1949) <doi:10.1071/CH9490149>. Beta
     regression follows Ferrari and Cribari-Neto (2004)
     <doi:10.1080/0266476042000214501>. Bounded ratings are mapped to the open
@@ -25,6 +25,7 @@ Description: An integrated workflow for factorial survey (vignette) experiments.
     <doi:10.1037/1082-989X.11.1.54>.
 License: MIT + file LICENSE
 Encoding: UTF-8
+Language: en-GB
 LazyData: true
 Depends: R (>= 4.1)
 Imports:
