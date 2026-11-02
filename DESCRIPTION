@@ -1,9 +1,10 @@
 Package: FactorialSurvey
 Type: Package
 Title: Design and Analysis of Factorial Survey (Vignette) Experiments
-Version: 0.2.0.9000
+Version: 0.3.0
 Authors@R: c(
-    person("Katsuya", "Tanaka", , "katsuyat@gmail.com", role = c("aut", "cre"),
+    person("Katsuya", "Tanaka", , "katsuyat@gmail.com",
+           role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0003-0455-0133")))
 Description: An integrated workflow for factorial survey (vignette) experiments.
     Constructs D-efficient sets of vignettes from a factorial structure and

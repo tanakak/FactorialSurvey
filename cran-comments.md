@@ -11,7 +11,6 @@ This is a new submission.
 - GitHub Actions: ubuntu-latest (devel, release, oldrel-1), macos-latest
   (release), windows-latest (release)
 - win-builder: R-devel (to be run before submission)
-- R-hub: (to be run before submission)
 
 ## R CMD check results
 
@@ -33,6 +32,7 @@ This is a new submission.
   guarded by `requireNamespace()`; the package checks cleanly with
   `_R_CHECK_DEPENDS_ONLY_=true`.
 - Every example runs in under three seconds.
+- The documentation uses British spelling, declared with `Language: en-GB`.
 
 ## Downstream dependencies
 

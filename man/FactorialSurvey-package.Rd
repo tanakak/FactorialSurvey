@@ -63,7 +63,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Katsuya Tanaka \email{katsuyat@gmail.com} (\href{https://orcid.org/0000-0003-0455-0133}{ORCID})
+\strong{Maintainer}: Katsuya Tanaka \email{katsuyat@gmail.com} (\href{https://orcid.org/0000-0003-0455-0133}{ORCID}) [copyright holder]
 
 }
 \keyword{internal}

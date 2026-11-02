@@ -1,4 +1,6 @@
-# FactorialSurvey (development version)
+# FactorialSurvey 0.3.0
+
+First release submitted to CRAN.
 
 ## Bug fixes
 
